@@ -8,7 +8,6 @@ var client = http.Client();
 
 String URL_API = 'chorenn.naliv.kz';
 
-
 Future<String?> getToken() async {
   final prefs = await SharedPreferences.getInstance();
   String? token = prefs.getString('token');
@@ -20,7 +19,6 @@ Future<String?> getToken() async {
   return token;
 }
 
-
 Future<bool> setToken(Map data) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('token', data['token']);
@@ -28,7 +26,6 @@ Future<bool> setToken(Map data) async {
   print(token);
   return token == false ? false : true;
 }
-
 
 Future<bool> login(String token) async {
   var url = Uri.https(URL_API, 'api/merchant/login');
@@ -45,6 +42,51 @@ Future<bool> login(String token) async {
 
     return true;
   } else {
+    print(data);
     return false;
   }
+}
+
+Future<List?> getActiveOrders() async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/getActiveOrders');
+  var response = await client.post(
+    url,
+    headers: {
+      "Content-Type": "application/json",
+      "AUTH": token,
+    },
+  );
+  print(response.body);
+
+  List result = json.decode(response.body);
+  print(json.encode(response.statusCode));
+  print(response.body);
+  return result;
+}
+
+Future<Map> getOrderDetails(String order_id) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return {};
+  }
+  var url = Uri.https(URL_API, 'api/merchant/getOrder');
+  var response = await client.post(
+    url,
+    headers: {
+      "Content-Type": "application/json",
+      "AUTH": token,
+    },
+    body: json.encode({"order_id": order_id}),
+  );
+
+  Map<String, dynamic> result = json.decode(response.body) ?? {};
+  print(json.encode(response.statusCode));
+  print(response.body);
+  return result;
 }

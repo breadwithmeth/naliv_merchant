@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
+import 'package:naliv_merchant/main.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +20,7 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         Flexible(
             child: TextField(
+          controller: _token,
           decoration: InputDecoration(
               hintText: "Токен магазина", border: OutlineInputBorder()),
         )),
@@ -27,11 +29,23 @@ class _LoginPageState extends State<LoginPage> {
           padding: EdgeInsets.all(20),
           child: ElevatedButton(
               onPressed: _isLoginButtonActive
-                  ? () {
+                  ? () async {
+                      print(_token.text);
                       setState(() {
                         _isLoginButtonActive = false;
                       });
-                      login(_token.text);
+                      await login(_token.text).then((v) {
+                        setState(() {
+                          _isLoginButtonActive = true;
+                        });
+                        if (v) {
+                          Navigator.pushReplacement(context, MaterialPageRoute(
+                            builder: (context) {
+                              return Main();
+                            },
+                          ));
+                        }
+                      });
                     }
                   : null,
               child: Text("Login")),

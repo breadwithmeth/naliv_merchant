@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
+import 'package:naliv_merchant/pages/bottomMenu.dart';
 import 'package:naliv_merchant/pages/login.dart';
 
 void main() {
@@ -21,13 +22,18 @@ class _MainState extends State<Main> {
   );
 
   Future<void> _checkAuth() async {
-    String? token = await getToken();
-    if (token != null) {
-    } else {
-      setState(() {
-        _redirect = LoginPage();
-      });
-    }
+    await getToken().then((token) {
+      if (token != null) {
+        setState(() {
+          _redirect = BottomMenu();
+        });
+      } else {
+        setState(() {
+          _redirect = LoginPage();
+        });
+      }
+    });
+
     // _requestPermission().then((value) async {
     //   if (value) {
     //   } else {
@@ -38,15 +44,30 @@ class _MainState extends State<Main> {
 
   @override
   void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      print(MediaQuery.of(context).size.aspectRatio);
+    });
     // TODO: implement initState
     _checkAuth();
-    super.initState();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.white,
+          surface: Colors.black,
+          dynamicSchemeVariant: DynamicSchemeVariant.content,
+          contrastLevel: 0,
+          brightness: Brightness.dark,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.transparent,
+        ),
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
