@@ -19,7 +19,7 @@ class _EditOrderPageState extends State<EditOrderPage> {
       print(v);
       setState(() {
         orderDetails = v;
-        items = v["items"];
+        items = v["items"]["items"];
       });
     });
   }
@@ -158,178 +158,237 @@ class _EditOrderPageState extends State<EditOrderPage> {
                 primary: false,
                 itemCount: items.length,
                 itemBuilder: (context, index) {
+                  List options = items[index]["options"] ?? [];
                   return Container(
-                    padding: EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(width: 2))),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        Expanded(
-                            flex: 2,
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                return Container(
-                                  margin: EdgeInsets.all(5),
-                                  clipBehavior: Clip.antiAliasWithSaveLayer,
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(20))),
-                                  width: constraints.maxWidth,
-                                  height: constraints.maxWidth,
-                                  child: Image.network(items[index]["img"]),
-                                );
-                              },
-                            )),
-                        Expanded(
-                          flex: 5,
-                          child: Text(
-                            items[index]["name"],
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 24),
-                          ),
-                        ),
-                        Expanded(
-                            flex: 3,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  items[index]["amount"],
+                      padding: EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(width: 2))),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              Expanded(
+                                  flex: 2,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return Container(
+                                        margin: EdgeInsets.all(5),
+                                        clipBehavior:
+                                            Clip.antiAliasWithSaveLayer,
+                                        decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(20))),
+                                        width: constraints.maxWidth,
+                                        height: constraints.maxWidth,
+                                        child:
+                                            Image.network(items[index]["img"]),
+                                      );
+                                    },
+                                  )),
+                              Expanded(
+                                flex: 5,
+                                child: Text(
+                                  items[index]["name"],
                                   style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 24),
                                 ),
-                              ],
-                            )),
-                        Expanded(
-                            child: IconButton(
-                                iconSize: 36,
-                                onPressed: () {
-                                  showAdaptiveDialog(
-                                    barrierDismissible: true,
-                                    context: context,
-                                    builder: (context) {
-                                      return AlertDialog(
-                                        backgroundColor: Colors.white,
-                                        alignment: Alignment.center,
-                                        actionsAlignment:
-                                            MainAxisAlignment.center,
-                                        content: Container(
-                                            child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Flexible(
-                                              child: Image.network(
-                                                  items[index]["img"]),
-                                            ),
-                                            Flexible(
-                                                child: Row(
-                                              children: [
-                                                Expanded(
-                                                  flex: 5,
-                                                  child: Text(
-                                                    items[index]["name"],
-                                                    style: TextStyle(
-                                                        color: Colors.black,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 24),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                    flex: 3,
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment.end,
-                                                      children: [
-                                                        Text(
-                                                          items[index]
-                                                              ["amount"],
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.black,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                              fontSize: 24),
-                                                        ),
-                                                      ],
-                                                    )),
-                                              ],
-                                            )),
-                                            Flexible(
-                                                child: Row(
-                                              children: [
-                                                Expanded(
-                                                  flex: 5,
-                                                  child: Text(
-                                                    items[index]["code"],
-                                                    style: TextStyle(
-                                                        color: Colors.black,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 16),
-                                                  ),
-                                                ),
-                                              ],
-                                            )),
-                                            Row(
-                                              children: [
-                                                Flexible(
-                                                  flex: 3,
-                                                  child: ElevatedButton(
-                                                      onPressed: () {
-                                                        Navigator.pushReplacement(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                          builder: (context) {
-                                                            return ChangeAmountPage(
-                                                              item:
-                                                                  items[index],
-                                                            );
-                                                          },
-                                                        ));
-                                                      },
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
+                              ),
+                              Expanded(
+                                  flex: 3,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        items[index]["amount"].toString(),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 24),
+                                      ),
+                                    ],
+                                  )),
+                              Expanded(
+                                  child: options.length != 0
+                                      ? Container()
+                                      : IconButton(
+                                          iconSize: 36,
+                                          onPressed: () {
+                                            showAdaptiveDialog(
+                                              barrierDismissible: true,
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor: Colors.white,
+                                                  alignment: Alignment.center,
+                                                  actionsAlignment:
+                                                      MainAxisAlignment.center,
+                                                  content: Container(
+                                                      child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Flexible(
+                                                        child: Image.network(
+                                                            items[index]
+                                                                ["img"]),
+                                                      ),
+                                                      Flexible(
+                                                          child: Row(
                                                         children: [
-                                                          Text(
-                                                              "Изменить количество")
+                                                          Expanded(
+                                                            flex: 5,
+                                                            child: Text(
+                                                              items[index]
+                                                                  ["name"],
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 24),
+                                                            ),
+                                                          ),
+                                                          Expanded(
+                                                              flex: 3,
+                                                              child: Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .end,
+                                                                children: [
+                                                                  Text(
+                                                                    items[index]
+                                                                            [
+                                                                            "amount"]
+                                                                        .toString(),
+                                                                    style: TextStyle(
+                                                                        color: Colors
+                                                                            .black,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w700,
+                                                                        fontSize:
+                                                                            24),
+                                                                  ),
+                                                                ],
+                                                              )),
                                                         ],
                                                       )),
-                                                ),
-                                                Spacer(),
-                                                Flexible(
-                                                    flex: 3,
-                                                    child: ElevatedButton(
-                                                        onPressed: () {},
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          children: [
-                                                            Text(
-                                                              "Заменить",
-                                                            )
-                                                          ],
-                                                        )))
-                                              ],
-                                            ),
-                                          ],
-                                        )),
-                                        actions: [],
-                                      );
-                                    },
-                                  );
-                                },
-                                icon: Icon(Icons.more_vert))),
-                      ],
-                    ),
-                  );
+                                                      Flexible(
+                                                          child: Row(
+                                                        children: [
+                                                          Expanded(
+                                                            flex: 5,
+                                                            child: Text(
+                                                              items[index]
+                                                                  ["code"],
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 16),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )),
+                                                      Row(
+                                                        children: [
+                                                          Flexible(
+                                                            flex: 3,
+                                                            child: items[index][
+                                                                        "by_weight"] ==
+                                                                    0
+                                                                ? Container()
+                                                                : ElevatedButton(
+                                                                    onPressed:
+                                                                        () {
+                                                                      Navigator.pushReplacement(
+                                                                          context,
+                                                                          MaterialPageRoute(
+                                                                        builder:
+                                                                            (context) {
+                                                                          return ChangeAmountPage(
+                                                                            item:
+                                                                                items[index],
+                                                                            order:
+                                                                                widget.order,
+                                                                            order_id:
+                                                                                widget.order_id,
+                                                                          );
+                                                                        },
+                                                                      ));
+                                                                    },
+                                                                    child: Row(
+                                                                      mainAxisAlignment:
+                                                                          MainAxisAlignment
+                                                                              .center,
+                                                                      children: [
+                                                                        Text(
+                                                                            "Изменить количество")
+                                                                      ],
+                                                                    )),
+                                                          ),
+                                                          Spacer(),
+                                                          Flexible(
+                                                              flex: 3,
+                                                              child:
+                                                                  ElevatedButton(
+                                                                      onPressed:
+                                                                          () {},
+                                                                      child:
+                                                                          Row(
+                                                                        mainAxisAlignment:
+                                                                            MainAxisAlignment.center,
+                                                                        children: [
+                                                                          Text(
+                                                                            "Заменить",
+                                                                          )
+                                                                        ],
+                                                                      )))
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  )),
+                                                  actions: [],
+                                                );
+                                              },
+                                            );
+                                          },
+                                          icon: Icon(Icons.more_vert))),
+                            ],
+                          ),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            primary: false,
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      options[index]["amount"].toString(),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 20),
+                                    ),
+                                    Icon(Icons.close),
+                                    Text(
+                                      options[index]["name"],
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 20),
+                                    )
+                                  ],
+                                ),
+                              );
+                            },
+                          )
+                        ],
+                      ));
                 },
               ),
             ),
