@@ -115,3 +115,21 @@ Future<bool?> changeAmount(int relation_id, String amount) async {
 
   return data;
 }
+
+Future<bool?> orderReady(String order_id) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/orderReady');
+  var response = await client.post(
+    url,
+    body: json.encode({'order_id': order_id}),
+    headers: {"Content-Type": "application/json", "AUTH": token},
+  );
+  print(response.body);
+  bool? data = jsonDecode(response.body);
+
+  return data;
+}

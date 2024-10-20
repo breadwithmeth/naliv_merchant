@@ -401,7 +401,9 @@ class _EditOrderPageState extends State<EditOrderPage> {
                 ElevatedButton(
                     style:
                         ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    onPressed: () {},
+                    onPressed: () {
+                      orderReady(widget.order_id);
+                    },
                     child: Text("Заказ готов")),
               ],
             )),
