@@ -90,3 +90,10 @@ Future<Map> getOrderDetails(String order_id) async {
   print(response.body);
   return result;
 }
+Future<bool> logout() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('token', "000");
+  final token = prefs.getString('token') ?? false;
+  print(token);
+  return token == false ? false : true;
+}

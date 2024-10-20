@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:naliv_merchant/main.dart';
+import 'package:naliv_merchant/pages/editOrder.dart';
 import 'package:naliv_merchant/pages/orderPage.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -27,7 +29,7 @@ class _ActiveOrdersState extends State<ActiveOrders> {
 
   late Timer _timer;
   late AudioPlayer player = AudioPlayer();
-
+  bool _isMenuOpen = true;
   @override
   void initState() {
     // TODO: implement initState
@@ -57,6 +59,29 @@ class _ActiveOrdersState extends State<ActiveOrders> {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
+        SliverOffstage(
+          offstage: _isMenuOpen,
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 100,
+                ),
+                ElevatedButton(
+                    onPressed: () {
+                      logout();
+                      Navigator.pushReplacement(context, MaterialPageRoute(
+                        builder: (context) {
+                          return Main();
+                        },
+                      ));
+                    },
+                    child: Text("Выйти"))
+              ],
+            ),
+          ),
+        ),
         SliverAppBar(
           automaticallyImplyLeading: false,
           centerTitle: false,
@@ -64,6 +89,19 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             "Заказы",
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
+          leading: IconButton(
+              onPressed: () {
+                if (_isMenuOpen) {
+                  setState(() {
+                    _isMenuOpen = false;
+                  });
+                } else {
+                  setState(() {
+                    _isMenuOpen = true;
+                  });
+                }
+              },
+              icon: Icon(Icons.menu)),
         ),
         SliverFillRemaining(
             child: SingleChildScrollView(
@@ -73,6 +111,9 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             itemCount: orders.length,
             itemBuilder: (context, index) {
               if (orders[index]["order_status"] == "0") {
+                player.play(AssetSource("new.mp3"));
+              }
+              if (orders[index]["order_status"] == "1") {
                 player.play(AssetSource("new.mp3"));
               }
               return OrderTile(
@@ -177,6 +218,16 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return OrderPage(
+                  order_id: widget.order["order_id"],
+                  order: widget.order,
+                );
+              },
+            ));
+          }
+          if (widget.order["order_status"] == "1") {
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) {
+                return EditOrderPage(
                   order_id: widget.order["order_id"],
                   order: widget.order,
                 );
