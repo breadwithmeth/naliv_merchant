@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:naliv_merchant/pages/activeOrders.dart';
 import 'package:naliv_merchant/pages/changeAmount.dart';
+import 'package:naliv_merchant/pages/replaceItem.dart';
 
 class EditOrderPage extends StatefulWidget {
   const EditOrderPage({super.key, required this.order_id, required this.order});
@@ -338,7 +339,20 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                                               child:
                                                                   ElevatedButton(
                                                                       onPressed:
-                                                                          () {},
+                                                                          () {
+                                                                        Navigator.pushReplacement(
+                                                                            context,
+                                                                            MaterialPageRoute(
+                                                                          builder:
+                                                                              (context) {
+                                                                            return ReplaceItemPage(
+                                                                              item: items[index],
+                                                                              order: widget.order,
+                                                                              order_id: widget.order_id,
+                                                                            );
+                                                                          },
+                                                                        ));
+                                                                      },
                                                                       child:
                                                                           Row(
                                                                         mainAxisAlignment:

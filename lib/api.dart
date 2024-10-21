@@ -133,3 +133,62 @@ Future<bool?> orderReady(String order_id) async {
 
   return data;
 }
+
+Future<bool?> acceptOrder(String order_id) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/acceptOrder');
+  var response = await client.post(
+    url,
+    body: json.encode({'order_id': order_id}),
+    headers: {"Content-Type": "application/json", "AUTH": token},
+  );
+  print(response.body);
+  bool? data = jsonDecode(response.body);
+
+  return data;
+}
+
+Future<List?> getReplacementItems(String relation_id) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/getReplacementItems');
+  var response = await client.post(
+    url,
+    body: json.encode({'relation_id': relation_id}),
+    headers: {
+      "Content-Type": "application/json",
+      "AUTH": token,
+    },
+  );
+  print(response.body);
+
+  List result = json.decode(response.body);
+  print(json.encode(response.statusCode));
+  print(response.body);
+  return result;
+}
+
+Future<bool?> replaceItem(String relation_id, String item_id) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/replaceItem');
+  var response = await client.post(
+    url,
+    body: json.encode({'relation_id': relation_id, 'item_id': item_id}),
+    headers: {"Content-Type": "application/json", "AUTH": token},
+  );
+  print(response.body);
+  bool? data = jsonDecode(response.body);
+
+  return data;
+}

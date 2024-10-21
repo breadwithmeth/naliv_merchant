@@ -197,10 +197,19 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     }
   }
 
+  bool isNew = false;
+
+  bool isAccepted = false;
+
   @override
   void initState() {
     super.initState();
     _animationCtrl = AnimationController(vsync: this);
+    if (widget.order["accepted_at"] == null) {
+      isNew = true;
+    } else {
+      isAccepted = true;
+    }
   }
 
   @override
@@ -214,7 +223,8 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     return GestureDetector(
         onTap: () {
           print("object");
-          if (widget.order["order_status"] == "0") {
+
+          if (isNew) {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return OrderPage(
@@ -224,7 +234,7 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
               },
             ));
           }
-          if (widget.order["order_status"] == "1") {
+          if (isAccepted) {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return EditOrderPage(
@@ -235,27 +245,19 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
             ));
           }
         },
-        child: widget.order["order_status"] != "0"
-            ? Card(
+        child: Card(
                 color: Colors.grey.shade900,
                 child: ListTile(
                   title: Text(widget.order["order_uuid"]),
-                  subtitle: getOrderStatusFormat(widget.order["order_status"]),
+                  // subtitle: getOrderStatusFormat(widget.order["order_status"]),
                 ))
-            : Card(
-                    color: Colors.grey.shade900,
-                    child: ListTile(
-                      title: Text(widget.order["order_uuid"]),
-                      subtitle:
-                          getOrderStatusFormat(widget.order["order_status"]),
-                    ))
-                .animate(
-                  controller: _animationCtrl,
-                  autoPlay: true,
-                  onPlay: (controller) {
-                    controller.repeat(reverse: true);
-                  },
-                )
-                .shimmer(curve: Curves.decelerate, duration: Durations.long4));
+            .animate(
+              controller: _animationCtrl,
+              autoPlay: isNew,
+              onPlay: (controller) {
+                controller.repeat(reverse: true);
+              },
+            )
+            .shimmer(curve: Curves.decelerate, duration: Durations.long4));
   }
 }
