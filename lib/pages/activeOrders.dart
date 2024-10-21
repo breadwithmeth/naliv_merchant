@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:naliv_merchant/pages/editOrder.dart';
 import 'package:naliv_merchant/pages/orderPage.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -15,6 +16,8 @@ class ActiveOrders extends StatefulWidget {
 
 class _ActiveOrdersState extends State<ActiveOrders> {
   List orders = [];
+  bool isNew = false;
+  bool isAccepted = false;
 
   Future<void> _getActiveOrders() async {
     await getActiveOrders().then((v) {
@@ -22,9 +25,16 @@ class _ActiveOrdersState extends State<ActiveOrders> {
       setState(() {
         orders = v ?? [];
       });
-      Map order = orders.firstWhere((element) => element["order_status"] == "0");
-      if (order.isNotEmpty) {
+      List orders_new = orders
+          .where(
+            (element) => element["accepted_at"] == null,
+          )
+          .toList();
+      if (orders_new.isNotEmpty) {
+        isNew = true;
         player.play(AssetSource("new.mp3"));
+      } else {
+        isAccepted = true;
       }
     });
   }
@@ -170,10 +180,19 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     return GestureDetector(
         onTap: () {
           print("object");
-          if (widget.order["order_status"] == "0") {
+          if (widget.order["accepted_at"] == null) {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return OrderPage(
+                  order_id: widget.order["order_id"],
+                  order: widget.order,
+                );
+              },
+            ));
+          } else {
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) {
+                return EditOrderPage(
                   order_id: widget.order["order_id"],
                   order: widget.order,
                 );
