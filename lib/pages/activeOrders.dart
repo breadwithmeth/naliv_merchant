@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:naliv_merchant/main.dart';
-import 'package:naliv_merchant/pages/editOrder.dart';
 import 'package:naliv_merchant/pages/orderPage.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -24,12 +22,16 @@ class _ActiveOrdersState extends State<ActiveOrders> {
       setState(() {
         orders = v ?? [];
       });
+      Map order = orders.firstWhere((element) => element["order_status"] == "0");
+      if (order.isNotEmpty) {
+        player.play(AssetSource("new.mp3"));
+      }
     });
   }
 
   late Timer _timer;
   late AudioPlayer player = AudioPlayer();
-  bool _isMenuOpen = true;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -39,10 +41,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
     _timer = Timer.periodic(new Duration(seconds: 10), (timer) {
       debugPrint(timer.tick.toString());
       _getActiveOrders();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await player.setSource(AssetSource('ambient_c_motion.mp3'));
-      await player.resume();
     });
   }
 
@@ -59,29 +57,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        SliverOffstage(
-          offstage: _isMenuOpen,
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 100,
-                ),
-                ElevatedButton(
-                    onPressed: () {
-                      logout();
-                      Navigator.pushReplacement(context, MaterialPageRoute(
-                        builder: (context) {
-                          return Main();
-                        },
-                      ));
-                    },
-                    child: Text("Выйти"))
-              ],
-            ),
-          ),
-        ),
         SliverAppBar(
           automaticallyImplyLeading: false,
           centerTitle: false,
@@ -89,19 +64,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             "Заказы",
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
-          leading: IconButton(
-              onPressed: () {
-                if (_isMenuOpen) {
-                  setState(() {
-                    _isMenuOpen = false;
-                  });
-                } else {
-                  setState(() {
-                    _isMenuOpen = true;
-                  });
-                }
-              },
-              icon: Icon(Icons.menu)),
         ),
         SliverFillRemaining(
             child: SingleChildScrollView(
@@ -110,12 +72,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             primary: false,
             itemCount: orders.length,
             itemBuilder: (context, index) {
-              if (orders[index]["order_status"] == "0") {
-                player.play(AssetSource("new.mp3"));
-              }
-              if (orders[index]["order_status"] == "1") {
-                player.play(AssetSource("new.mp3"));
-              }
               return OrderTile(
                 order: orders[index],
               );
@@ -197,19 +153,10 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     }
   }
 
-  bool isNew = false;
-
-  bool isAccepted = false;
-
   @override
   void initState() {
     super.initState();
     _animationCtrl = AnimationController(vsync: this);
-    if (widget.order["accepted_at"] == null) {
-      isNew = true;
-    } else {
-      isAccepted = true;
-    }
   }
 
   @override
@@ -223,8 +170,7 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     return GestureDetector(
         onTap: () {
           print("object");
-
-          if (isNew) {
+          if (widget.order["order_status"] == "0") {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return OrderPage(
@@ -234,30 +180,27 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
               },
             ));
           }
-          if (isAccepted) {
-            Navigator.pushReplacement(context, MaterialPageRoute(
-              builder: (context) {
-                return EditOrderPage(
-                  order_id: widget.order["order_id"],
-                  order: widget.order,
-                );
-              },
-            ));
-          }
         },
-        child: Card(
+        child: widget.order["order_status"] != "0"
+            ? Card(
                 color: Colors.grey.shade900,
                 child: ListTile(
                   title: Text(widget.order["order_uuid"]),
-                  // subtitle: getOrderStatusFormat(widget.order["order_status"]),
+                  subtitle: getOrderStatusFormat(widget.order["order_status"]),
                 ))
-            .animate(
-              controller: _animationCtrl,
-              autoPlay: isNew,
-              onPlay: (controller) {
-                controller.repeat(reverse: true);
-              },
-            )
-            .shimmer(curve: Curves.decelerate, duration: Durations.long4));
+            : Card(
+                    color: Colors.grey.shade900,
+                    child: ListTile(
+                      title: Text(widget.order["order_uuid"]),
+                      subtitle: getOrderStatusFormat(widget.order["order_status"]),
+                    ))
+                .animate(
+                  controller: _animationCtrl,
+                  autoPlay: true,
+                  onPlay: (controller) {
+                    controller.repeat(reverse: true);
+                  },
+                )
+                .shimmer(curve: Curves.decelerate, duration: Durations.long4));
   }
 }

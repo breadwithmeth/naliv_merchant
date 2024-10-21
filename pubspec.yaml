@@ -40,6 +40,10 @@ dependencies:
   flutter_animate: ^4.5.0
   audioplayers: ^6.1.0
   numberpicker: ^2.1.2
+  just_audio: ^0.9.41
+  audio_service: ^0.18.15
+  audio_session: ^0.1.21
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:
