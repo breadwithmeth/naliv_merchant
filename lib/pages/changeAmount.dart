@@ -5,11 +5,7 @@ import 'package:naliv_merchant/pages/activeOrders.dart';
 import 'package:naliv_merchant/pages/editOrder.dart';
 
 class ChangeAmountPage extends StatefulWidget {
-  const ChangeAmountPage(
-      {super.key,
-      required this.item,
-      required this.order_id,
-      required this.order});
+  const ChangeAmountPage({super.key, required this.item, required this.order_id, required this.order});
   final Map item;
   final String order_id;
   final Map order;
@@ -51,10 +47,7 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                 flex: 5,
                 child: Text(
                   widget.item["name"],
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 24),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 24),
                 ),
               ),
               Expanded(
@@ -64,10 +57,7 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                     children: [
                       Text(
                         widget.item["amount"].toString(),
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 24),
                       ),
                     ],
                   )),
@@ -80,10 +70,7 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                 flex: 5,
                 child: Text(
                   widget.item["code"],
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                 ),
               ),
             ],
@@ -99,8 +86,7 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                         Flexible(
                           child: Text(
                             "Количество",
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 20),
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                           ),
                         ),
                         Spacer(),
@@ -111,8 +97,7 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                                 onChanged: (String value) {
                                   print('Changed');
                                   double x;
-                                  if (double.parse(value) <= amount &&
-                                      double.parse(value) >= amount * 0.3) {
+                                  if (double.parse(value) <= amount && double.parse(value) >= amount * 0.3) {
                                     setState(() {
                                       isButtonActive = true;
                                     });
@@ -141,11 +126,9 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
                                   //               .value.selection.baseOffset),
                                   //     ));
                                 },
-                                keyboardType: TextInputType.numberWithOptions(
-                                    decimal: true),
+                                keyboardType: TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: <TextInputFormatter>[
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'[0-9]+[,.]{0,1}[0-9]*')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]+[,.]{0,1}[0-9]*')),
                                   TextInputFormatter.withFunction(
                                     (oldValue, newValue) => newValue.copyWith(
                                       text: newValue.text.replaceAll(',', '.'),
@@ -162,14 +145,10 @@ class _ChangeAmountPageState extends State<ChangeAmountPage> {
               child: ElevatedButton(
                   onPressed: isButtonActive
                       ? () {
-                          changeAmount(widget.item["relation_id"], _amount.text)
-                              .then((v) {
-                            Navigator.pushReplacement(context,
-                                MaterialPageRoute(
+                          changeAmount(widget.item["relation_id"], _amount.text).then((v) {
+                            Navigator.pushReplacement(context, MaterialPageRoute(
                               builder: (context) {
-                                return EditOrderPage(
-                                    order_id: widget.order_id,
-                                    order: widget.order);
+                                return EditOrderPage(order_id: widget.order_id, order: widget.order);
                               },
                             ));
                           });

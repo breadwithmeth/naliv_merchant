@@ -3,11 +3,7 @@ import 'package:naliv_merchant/api.dart';
 import 'package:naliv_merchant/pages/editOrder.dart';
 
 class ReplaceItemPage extends StatefulWidget {
-  const ReplaceItemPage(
-      {super.key,
-      required this.item,
-      required this.order_id,
-      required this.order});
+  const ReplaceItemPage({super.key, required this.item, required this.order_id, required this.order});
   final Map item;
   final String order_id;
   final Map order;
@@ -63,8 +59,7 @@ class _ReplaceItemPageState extends State<ReplaceItemPage> {
                   onTap: () {
                     Navigator.pushReplacement(context, MaterialPageRoute(
                       builder: (context) {
-                        return EditOrderPage(
-                            order_id: widget.order_id, order: widget.order);
+                        return EditOrderPage(order_id: widget.order_id, order: widget.order);
                       },
                     ));
                   },
@@ -86,16 +81,10 @@ class _ReplaceItemPageState extends State<ReplaceItemPage> {
                           actions: [
                             ElevatedButton(
                                 onPressed: () {
-                                  replaceItem(
-                                          widget.item["relation_id"].toString(),
-                                          items[index]["item_id"])
-                                      .then((v) {
-                                    Navigator.pushReplacement(context,
-                                        MaterialPageRoute(
+                                  replaceItem(widget.item["relation_id"].toString(), items[index]["item_id"]).then((v) {
+                                    Navigator.pushReplacement(context, MaterialPageRoute(
                                       builder: (context) {
-                                        return EditOrderPage(
-                                            order_id: widget.order_id,
-                                            order: widget.order);
+                                        return EditOrderPage(order_id: widget.order_id, order: widget.order);
                                       },
                                     ));
                                   });

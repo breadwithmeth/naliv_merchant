@@ -17,6 +17,8 @@ class ActiveOrders extends StatefulWidget {
 
 class _ActiveOrdersState extends State<ActiveOrders> {
   List orders = [];
+  bool isNew = false;
+  bool isAccepted = false;
 
   Future<void> _getActiveOrders() async {
     await getActiveOrders().then((v) {
@@ -24,12 +26,24 @@ class _ActiveOrdersState extends State<ActiveOrders> {
       setState(() {
         orders = v ?? [];
       });
+      List orders_new = orders
+          .where(
+            (element) => element["accepted_at"] == null,
+          )
+          .toList();
+      if (orders_new.isNotEmpty) {
+        isNew = true;
+        player.play(AssetSource("new.mp3"));
+      } else {
+        isAccepted = true;
+      }
     });
   }
 
   late Timer _timer;
   late AudioPlayer player = AudioPlayer();
   bool _isMenuOpen = true;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -39,10 +53,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
     _timer = Timer.periodic(new Duration(seconds: 10), (timer) {
       debugPrint(timer.tick.toString());
       _getActiveOrders();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await player.setSource(AssetSource('ambient_c_motion.mp3'));
-      await player.resume();
     });
   }
 
@@ -110,12 +120,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             primary: false,
             itemCount: orders.length,
             itemBuilder: (context, index) {
-              if (orders[index]["order_status"] == "0") {
-                player.play(AssetSource("new.mp3"));
-              }
-              if (orders[index]["order_status"] == "1") {
-                player.play(AssetSource("new.mp3"));
-              }
               return OrderTile(
                 order: orders[index],
               );
@@ -197,19 +201,10 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     }
   }
 
-  bool isNew = false;
-
-  bool isAccepted = false;
-
   @override
   void initState() {
     super.initState();
     _animationCtrl = AnimationController(vsync: this);
-    if (widget.order["accepted_at"] == null) {
-      isNew = true;
-    } else {
-      isAccepted = true;
-    }
   }
 
   @override
@@ -223,8 +218,7 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
     return GestureDetector(
         onTap: () {
           print("object");
-
-          if (isNew) {
+          if (widget.order["accepted_at"] == null) {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return OrderPage(
@@ -233,8 +227,7 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
                 );
               },
             ));
-          }
-          if (isAccepted) {
+          } else {
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) {
                 return EditOrderPage(
@@ -245,19 +238,26 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
             ));
           }
         },
-        child: Card(
+        child: widget.order["order_status"] != "0"
+            ? Card(
                 color: Colors.grey.shade900,
                 child: ListTile(
                   title: Text(widget.order["order_uuid"]),
-                  // subtitle: getOrderStatusFormat(widget.order["order_status"]),
+                  subtitle: getOrderStatusFormat(widget.order["order_status"]),
                 ))
-            .animate(
-              controller: _animationCtrl,
-              autoPlay: isNew,
-              onPlay: (controller) {
-                controller.repeat(reverse: true);
-              },
-            )
-            .shimmer(curve: Curves.decelerate, duration: Durations.long4));
+            : Card(
+                    color: Colors.grey.shade900,
+                    child: ListTile(
+                      title: Text(widget.order["order_uuid"]),
+                      subtitle: getOrderStatusFormat(widget.order["order_status"]),
+                    ))
+                .animate(
+                  controller: _animationCtrl,
+                  autoPlay: true,
+                  onPlay: (controller) {
+                    controller.repeat(reverse: true);
+                  },
+                )
+                .shimmer(curve: Curves.decelerate, duration: Durations.long4));
   }
 }
