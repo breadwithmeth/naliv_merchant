@@ -50,7 +50,9 @@ class _OrderPageState extends State<OrderPage> {
       oneSec,
       (Timer timer) {
         setState(() {
-          currentTime = _start + 600 - (DateTime.now().toUtc().millisecondsSinceEpoch / 1000).toInt();
+          currentTime = _start +
+              600 -
+              (DateTime.now().toUtc().millisecondsSinceEpoch / 1000).toInt();
         });
       },
     );
@@ -130,8 +132,12 @@ class _OrderPageState extends State<OrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(widget.order["delivery_price"]).toInt().toString() ?? "",
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
+                                double.parse(widget.order["delivery_price"])
+                                        .toInt()
+                                        .toString() ??
+                                    "",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 24),
                               )
                             ],
                           ))
@@ -154,8 +160,12 @@ class _OrderPageState extends State<OrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(orderDetails.isEmpty ? "0.0" : orderDetails["sum"] ?? "0.0").toInt().toString(),
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
+                                double.parse(orderDetails["sum"])
+                                        .toInt()
+                                        .toString() ??
+                                    "",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 24),
                               )
                             ],
                           ))
@@ -167,7 +177,9 @@ class _OrderPageState extends State<OrderPage> {
                 Flexible(
                     child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: [Text(globals.formattedTime(timeInSecond: currentTime))],
+                  children: [
+                    Text(globals.formattedTime(timeInSecond: currentTime))
+                  ],
                 ))
               ],
             ),
@@ -184,34 +196,39 @@ class _OrderPageState extends State<OrderPage> {
                   List options = items[index]["options"] ?? [];
                   return Container(
                       padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(border: Border(bottom: BorderSide(width: 2))),
+                      decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(width: 2))),
                       child: Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             mainAxisSize: MainAxisSize.max,
                             children: [
-                              items[index]["img"] != null
-                                  ? Flexible(
-                                      flex: 2,
-                                      child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          return Container(
-                                            margin: EdgeInsets.all(5),
-                                            clipBehavior: Clip.antiAliasWithSaveLayer,
-                                            decoration: BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
-                                            width: constraints.maxWidth,
-                                            height: constraints.maxWidth,
-                                            child: Image.network(items[index]["img"]),
-                                          );
-                                        },
-                                      ))
-                                  : SizedBox(),
+                              Flexible(
+                                  flex: 2,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return Container(
+                                        margin: EdgeInsets.all(5),
+                                        clipBehavior:
+                                            Clip.antiAliasWithSaveLayer,
+                                        decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(20))),
+                                        width: constraints.maxWidth,
+                                        height: constraints.maxWidth,
+                                        child:
+                                            Image.network(items[index]["img"]),
+                                      );
+                                    },
+                                  )),
                               Flexible(
                                 flex: 5,
                                 child: Text(
                                   items[index]["name"],
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 24),
                                 ),
                               ),
                               Flexible(
@@ -221,7 +238,9 @@ class _OrderPageState extends State<OrderPage> {
                                     children: [
                                       Text(
                                         items[index]["amount"].toString(),
-                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 24),
                                       ),
                                     ],
                                   )),
@@ -238,34 +257,55 @@ class _OrderPageState extends State<OrderPage> {
                                                 return AlertDialog(
                                                   backgroundColor: Colors.white,
                                                   alignment: Alignment.center,
-                                                  actionsAlignment: MainAxisAlignment.center,
+                                                  actionsAlignment:
+                                                      MainAxisAlignment.center,
                                                   content: Container(
                                                       child: Column(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
-                                                      items[index]["img"] != null
-                                                          ? Flexible(
-                                                              child: Image.network(items[index]["img"]),
-                                                            )
-                                                          : SizedBox(),
+                                                      Flexible(
+                                                        child: Image.network(
+                                                            items[index]
+                                                                ["img"]),
+                                                      ),
                                                       Flexible(
                                                           child: Row(
                                                         children: [
                                                           Flexible(
                                                             flex: 5,
                                                             child: Text(
-                                                              items[index]["name"],
-                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
+                                                              items[index]
+                                                                  ["name"],
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 24),
                                                             ),
                                                           ),
                                                           Flexible(
                                                               flex: 3,
                                                               child: Row(
-                                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .end,
                                                                 children: [
                                                                   Text(
-                                                                    items[index]["amount"].toString(),
-                                                                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
+                                                                    items[index]
+                                                                            [
+                                                                            "amount"]
+                                                                        .toString(),
+                                                                    style: TextStyle(
+                                                                        color: Colors
+                                                                            .black,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w700,
+                                                                        fontSize:
+                                                                            24),
                                                                   ),
                                                                 ],
                                                               )),
@@ -277,8 +317,15 @@ class _OrderPageState extends State<OrderPage> {
                                                           Flexible(
                                                             flex: 5,
                                                             child: Text(
-                                                              items[index]["code"],
-                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 16),
+                                                              items[index]
+                                                                  ["code"],
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 16),
                                                             ),
                                                           ),
                                                         ],
@@ -303,12 +350,16 @@ class _OrderPageState extends State<OrderPage> {
                                   children: [
                                     Text(
                                       options[index]["amount"].toString(),
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 20),
                                     ),
                                     Icon(Icons.close),
                                     Text(
                                       options[index]["name"],
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 20),
                                     )
                                   ],
                                 ),
@@ -327,12 +378,14 @@ class _OrderPageState extends State<OrderPage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent),
                     onPressed: () {
                       acceptOrder(widget.order_id).then((v) {
                         Navigator.pushReplacement(context, MaterialPageRoute(
                           builder: (context) {
-                            return EditOrderPage(order_id: widget.order_id, order: widget.order);
+                            return EditOrderPage(
+                                order_id: widget.order_id, order: widget.order);
                           },
                         ));
                       });
