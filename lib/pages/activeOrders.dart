@@ -79,15 +79,16 @@ class _ActiveOrdersState extends State<ActiveOrders> {
                   height: 100,
                 ),
                 ElevatedButton(
-                    onPressed: () {
-                      logout();
-                      Navigator.pushReplacement(context, MaterialPageRoute(
-                        builder: (context) {
-                          return Main();
-                        },
-                      ));
-                    },
-                    child: Text("Выйти"))
+                  onPressed: () {
+                    logout();
+                    Navigator.pushReplacement(context, MaterialPageRoute(
+                      builder: (context) {
+                        return Main();
+                      },
+                    ));
+                  },
+                  child: Text("Выйти"),
+                )
               ],
             ),
           ),

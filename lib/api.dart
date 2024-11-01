@@ -129,9 +129,20 @@ Future<bool?> orderReady(String order_id) async {
     headers: {"Content-Type": "application/json", "AUTH": token},
   );
   print(response.body);
-  bool? data = jsonDecode(response.body);
-
-  return data;
+  Map? data = jsonDecode(response.body);
+  if (data != null) {
+    if (data.isNotEmpty) {
+      if (data["message"] == "success") {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
 }
 
 Future<bool?> acceptOrder(String order_id) async {

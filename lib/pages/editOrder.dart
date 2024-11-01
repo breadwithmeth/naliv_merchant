@@ -209,9 +209,11 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                                       child: Column(
                                                     mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      Flexible(
-                                                        child: Image.network(items[index]["img"]),
-                                                      ),
+                                                      items[index]["img"] != null
+                                                          ? Flexible(
+                                                              child: Image.network(items[index]["img"]),
+                                                            )
+                                                          : SizedBox(),
                                                       Flexible(
                                                           child: Row(
                                                         children: [
