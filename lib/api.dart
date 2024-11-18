@@ -47,9 +47,9 @@ Future<bool> login(String token) async {
   }
 }
 
-Future<List?> getActiveOrders() async {
-  String? token = globals.currentToken;
-
+Future<Map?> getActiveOrders() async {
+  String? token = await getToken();
+  print(token);
   if (token == null) {
     return null;
   }
@@ -61,11 +61,8 @@ Future<List?> getActiveOrders() async {
       "AUTH": token,
     },
   );
-  print(response.body);
 
-  List result = json.decode(response.body);
-  print(json.encode(response.statusCode));
-  print(response.body);
+  Map result = json.decode(utf8.decode(response.bodyBytes));
   return result;
 }
 

@@ -94,10 +94,7 @@ class _EditOrderPageState extends State<EditOrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(widget.order["delivery_price"])
-                                        .toInt()
-                                        .toString() ??
-                                    "",
+                                widget.order["delivery_price"].toString() ?? "",
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 24),
                               )
@@ -122,10 +119,7 @@ class _EditOrderPageState extends State<EditOrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(orderDetails["sum"])
-                                        .toInt()
-                                        .toString() ??
-                                    "",
+                                orderDetails["sum"].toString() ?? "",
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 24),
                               )
@@ -143,7 +137,16 @@ class _EditOrderPageState extends State<EditOrderPage> {
                     ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green),
-                        onPressed: () {},
+                        onPressed: () {
+                          orderReady(widget.order_id).then((v) {
+                            Navigator.pushReplacement(context,
+                                MaterialPageRoute(
+                              builder: (context) {
+                                return ActiveOrders();
+                              },
+                            ));
+                          });
+                        },
                         child: Text("Заказ готов")),
                   ],
                 ))

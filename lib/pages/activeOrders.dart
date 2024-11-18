@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:naliv_merchant/NotificationController.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:naliv_merchant/main.dart';
@@ -20,9 +21,10 @@ class _ActiveOrdersState extends State<ActiveOrders> {
 
   Future<void> _getActiveOrders() async {
     await getActiveOrders().then((v) {
-      print(v);
       setState(() {
-        orders = v ?? [];
+        if (v != null) {
+          orders = v["orders"];
+        }
       });
     });
   }
@@ -40,10 +42,10 @@ class _ActiveOrdersState extends State<ActiveOrders> {
       debugPrint(timer.tick.toString());
       _getActiveOrders();
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await player.setSource(AssetSource('ambient_c_motion.mp3'));
-      await player.resume();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   await player.setSource(AssetSource('ambient_c_motion.mp3'));
+    //   await player.resume();
+    // });
   }
 
   @override
@@ -102,6 +104,13 @@ class _ActiveOrdersState extends State<ActiveOrders> {
                 }
               },
               icon: Icon(Icons.menu)),
+          actions: [
+            ElevatedButton(
+                onPressed: () {
+                  NotificationController.createNewNotification();
+                },
+                child: Text("data"))
+          ],
         ),
         SliverFillRemaining(
             child: SingleChildScrollView(
@@ -110,12 +119,6 @@ class _ActiveOrdersState extends State<ActiveOrders> {
             primary: false,
             itemCount: orders.length,
             itemBuilder: (context, index) {
-              if (orders[index]["order_status"] == "0") {
-                player.play(AssetSource("new.mp3"));
-              }
-              if (orders[index]["order_status"] == "1") {
-                player.play(AssetSource("new.mp3"));
-              }
               return OrderTile(
                 order: orders[index],
               );
@@ -201,20 +204,37 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
 
   bool isAccepted = false;
 
+  bool isReady = false;
+
+  List items = [];
+
+  void initItems() {
+    setState(() {
+      items = widget.order["items"];
+    });
+    setState(() {
+      if (widget.order["ready_at"] != null) {
+        isReady = true;
+      }
+      if (widget.order["accepted_at"] == null) {
+        isNew = true;
+      } else {
+        isAccepted = true;
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    initItems();
     _animationCtrl = AnimationController(vsync: this);
-    if (widget.order["accepted_at"] == null) {
-      isNew = true;
-    } else {
-      isAccepted = true;
-    }
   }
 
   @override
   void dispose() {
     _animationCtrl.dispose();
+
     super.dispose();
   }
 
@@ -222,33 +242,132 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return GestureDetector(
         onTap: () {
-          print("object");
-
-          if (isNew) {
-            Navigator.pushReplacement(context, MaterialPageRoute(
-              builder: (context) {
-                return OrderPage(
-                  order_id: widget.order["order_id"],
-                  order: widget.order,
-                );
-              },
-            ));
-          }
-          if (isAccepted) {
-            Navigator.pushReplacement(context, MaterialPageRoute(
-              builder: (context) {
-                return EditOrderPage(
-                  order_id: widget.order["order_id"],
-                  order: widget.order,
-                );
-              },
-            ));
+          if (!isReady) {
+            if (isNew) {
+              Navigator.pushReplacement(context, MaterialPageRoute(
+                builder: (context) {
+                  return OrderPage(
+                    order_id: widget.order["order_id"].toString(),
+                    order: widget.order,
+                  );
+                },
+              ));
+            }
+            if (isAccepted) {
+              Navigator.pushReplacement(context, MaterialPageRoute(
+                builder: (context) {
+                  return EditOrderPage(
+                    order_id: widget.order["order_id"].toString(),
+                    order: widget.order,
+                  );
+                },
+              ));
+            }
           }
         },
         child: Card(
-                color: Colors.grey.shade900,
-                child: ListTile(
-                  title: Text(widget.order["order_uuid"]),
+                color: const Color.fromARGB(255, 240, 213, 213),
+                child: ExpansionTile(
+                  collapsedBackgroundColor: Colors.black,
+                  backgroundColor: Colors.black,
+                  title: GestureDetector(
+                    child: Row(
+                      children: [
+                        Icon(isReady ? Icons.done : Icons.circle),
+                        Text(
+                          widget.order["order_uuid"],
+                          style: TextStyle(
+                              color: isAccepted ? Colors.green : Colors.yellow),
+                        )
+                      ],
+                    ),
+                    onTap: () {
+                      if (!isReady) {
+                        if (isNew) {
+                          Navigator.pushReplacement(context, MaterialPageRoute(
+                            builder: (context) {
+                              return OrderPage(
+                                order_id: widget.order["order_id"].toString(),
+                                order: widget.order,
+                              );
+                            },
+                          ));
+                        }
+                        if (isAccepted) {
+                          Navigator.pushReplacement(context, MaterialPageRoute(
+                            builder: (context) {
+                              return EditOrderPage(
+                                order_id: widget.order["order_id"].toString(),
+                                order: widget.order,
+                              );
+                            },
+                          ));
+                        }
+                      }
+                    },
+                  ),
+                  children: [
+                    ListView.builder(
+                      shrinkWrap: true,
+                      primary: false,
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        return Container(
+                          margin: EdgeInsets.all(10),
+                          color: Colors.grey.shade900,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                  child: Container(
+                                margin: EdgeInsets.all(10),
+                                child: items[index]["img"] != null
+                                    ? Image.network(items[index]["img"])
+                                    : Container(),
+                              )),
+                              Flexible(
+                                  flex: 4,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (!isReady) {
+                                        if (isNew) {
+                                          Navigator.pushReplacement(context,
+                                              MaterialPageRoute(
+                                            builder: (context) {
+                                              return OrderPage(
+                                                order_id: widget
+                                                    .order["order_id"]
+                                                    .toString(),
+                                                order: widget.order,
+                                              );
+                                            },
+                                          ));
+                                        }
+                                        if (isAccepted) {
+                                          Navigator.pushReplacement(context,
+                                              MaterialPageRoute(
+                                            builder: (context) {
+                                              return EditOrderPage(
+                                                order_id:
+                                                    widget.order["order_id"],
+                                                order: widget.order,
+                                              );
+                                            },
+                                          ));
+                                        }
+                                      }
+                                    },
+                                    child: Text(
+                                      items[index]["name"],
+                                      softWrap: true,
+                                      overflow: TextOverflow.fade,
+                                    ),
+                                  ))
+                            ],
+                          ),
+                        );
+                      },
+                    )
+                  ],
                   // subtitle: getOrderStatusFormat(widget.order["order_status"]),
                 ))
             .animate(

@@ -38,7 +38,7 @@ class _OrderPageState extends State<OrderPage> {
     // TODO: implement initState
     super.initState();
     setState(() {
-      _start = int.parse(widget.order["created_at"]);
+      _start = widget.order["created_at"];
     });
     _getOrder();
     startTimer();
@@ -111,6 +111,7 @@ class _OrderPageState extends State<OrderPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Flexible(
+                  flex: 3,
                   child: Column(
                     children: [
                       Row(
@@ -132,10 +133,7 @@ class _OrderPageState extends State<OrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(widget.order["delivery_price"])
-                                        .toInt()
-                                        .toString() ??
-                                    "",
+                                widget.order["delivery_price"].toString() ?? "",
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 24),
                               )
@@ -151,7 +149,7 @@ class _OrderPageState extends State<OrderPage> {
                             children: [
                               Text(
                                 "Сумма",
-                                style: TextStyle(fontSize: 24),
+                                style: TextStyle(fontSize: 12),
                               )
                             ],
                           )),
@@ -160,12 +158,11 @@ class _OrderPageState extends State<OrderPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                double.parse(orderDetails["sum"])
-                                        .toInt()
-                                        .toString() ??
-                                    "",
+                                orderDetails["sum"] == null
+                                    ? "999999"
+                                    : orderDetails["sum"].toString(),
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 24),
+                                    fontWeight: FontWeight.w700, fontSize: 12),
                               )
                             ],
                           ))
@@ -217,8 +214,9 @@ class _OrderPageState extends State<OrderPage> {
                                                 Radius.circular(20))),
                                         width: constraints.maxWidth,
                                         height: constraints.maxWidth,
-                                        child:
-                                            Image.network(items[index]["img"]),
+                                        child: items[index]["img"] != null
+                                            ? Image.network(items[index]["img"])
+                                            : Container(),
                                       );
                                     },
                                   )),
@@ -385,7 +383,8 @@ class _OrderPageState extends State<OrderPage> {
                         Navigator.pushReplacement(context, MaterialPageRoute(
                           builder: (context) {
                             return EditOrderPage(
-                                order_id: widget.order_id, order: widget.order);
+                                order_id: widget.order_id.toString(),
+                                order: widget.order);
                           },
                         ));
                       });
