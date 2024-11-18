@@ -165,39 +165,34 @@ class _EditOrderPageState extends State<EditOrderPage> {
                   List options = items[index]["options"] ?? [];
                   return Container(
                       padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(width: 2))),
+                      decoration: BoxDecoration(border: Border(bottom: BorderSide(width: 2))),
                       child: Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             mainAxisSize: MainAxisSize.max,
                             children: [
-                              Expanded(
-                                  flex: 2,
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return Container(
-                                        margin: EdgeInsets.all(5),
-                                        clipBehavior:
-                                            Clip.antiAliasWithSaveLayer,
-                                        decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(
-                                                Radius.circular(20))),
-                                        width: constraints.maxWidth,
-                                        height: constraints.maxWidth,
-                                        child:
-                                            Image.network(items[index]["img"]),
-                                      );
-                                    },
-                                  )),
+                              items[index]["img"] != null
+                                  ? Expanded(
+                                      flex: 2,
+                                      child: LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          return Container(
+                                            margin: EdgeInsets.all(5),
+                                            clipBehavior: Clip.antiAliasWithSaveLayer,
+                                            decoration: BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
+                                            width: constraints.maxWidth,
+                                            height: constraints.maxWidth,
+                                            child: Image.network(items[index]["img"]),
+                                          );
+                                        },
+                                      ))
+                                  : SizedBox(),
                               Expanded(
                                 flex: 5,
                                 child: Text(
                                   items[index]["name"],
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 24),
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
                                 ),
                               ),
                               Expanded(
@@ -207,9 +202,7 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                     children: [
                                       Text(
                                         items[index]["amount"].toString(),
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 24),
+                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
                                       ),
                                     ],
                                   )),
@@ -226,55 +219,34 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                                 return AlertDialog(
                                                   backgroundColor: Colors.white,
                                                   alignment: Alignment.center,
-                                                  actionsAlignment:
-                                                      MainAxisAlignment.center,
+                                                  actionsAlignment: MainAxisAlignment.center,
                                                   content: Container(
                                                       child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
+                                                    mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      Flexible(
-                                                        child: Image.network(
-                                                            items[index]
-                                                                ["img"]),
-                                                      ),
+                                                      items[index]["img"] != null
+                                                          ? Flexible(
+                                                              child: Image.network(items[index]["img"]),
+                                                            )
+                                                          : SizedBox(),
                                                       Flexible(
                                                           child: Row(
                                                         children: [
                                                           Expanded(
                                                             flex: 5,
                                                             child: Text(
-                                                              items[index]
-                                                                  ["name"],
-                                                              style: TextStyle(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700,
-                                                                  fontSize: 24),
+                                                              items[index]["name"],
+                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
                                                             ),
                                                           ),
                                                           Expanded(
                                                               flex: 3,
                                                               child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .end,
+                                                                mainAxisAlignment: MainAxisAlignment.end,
                                                                 children: [
                                                                   Text(
-                                                                    items[index]
-                                                                            [
-                                                                            "amount"]
-                                                                        .toString(),
-                                                                    style: TextStyle(
-                                                                        color: Colors
-                                                                            .black,
-                                                                        fontWeight:
-                                                                            FontWeight
-                                                                                .w700,
-                                                                        fontSize:
-                                                                            24),
+                                                                    items[index]["amount"].toString(),
+                                                                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
                                                                   ),
                                                                 ],
                                                               )),
@@ -286,15 +258,8 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                                           Expanded(
                                                             flex: 5,
                                                             child: Text(
-                                                              items[index]
-                                                                  ["code"],
-                                                              style: TextStyle(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700,
-                                                                  fontSize: 16),
+                                                              items[index]["code"],
+                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 16),
                                                             ),
                                                           ),
                                                         ],
@@ -303,69 +268,48 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                                         children: [
                                                           Flexible(
                                                             flex: 3,
-                                                            child: items[index][
-                                                                        "by_weight"] ==
-                                                                    0
+                                                            child: items[index]["by_weight"] == 0
                                                                 ? Container()
                                                                 : ElevatedButton(
-                                                                    onPressed:
-                                                                        () {
-                                                                      Navigator.pushReplacement(
-                                                                          context,
-                                                                          MaterialPageRoute(
-                                                                        builder:
-                                                                            (context) {
+                                                                    onPressed: () {
+                                                                      Navigator.pushReplacement(context, MaterialPageRoute(
+                                                                        builder: (context) {
                                                                           return ChangeAmountPage(
-                                                                            item:
-                                                                                items[index],
-                                                                            order:
-                                                                                widget.order,
-                                                                            order_id:
-                                                                                widget.order_id,
+                                                                            item: items[index],
+                                                                            order: widget.order,
+                                                                            order_id: widget.order_id,
                                                                           );
                                                                         },
                                                                       ));
                                                                     },
                                                                     child: Row(
-                                                                      mainAxisAlignment:
-                                                                          MainAxisAlignment
-                                                                              .center,
-                                                                      children: [
-                                                                        Text(
-                                                                            "Изменить количество")
-                                                                      ],
+                                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                                      children: [Text("Изменить количество")],
                                                                     )),
                                                           ),
                                                           Spacer(),
                                                           Flexible(
                                                               flex: 3,
-                                                              child:
-                                                                  ElevatedButton(
-                                                                      onPressed:
-                                                                          () {
-                                                                        Navigator.pushReplacement(
-                                                                            context,
-                                                                            MaterialPageRoute(
-                                                                          builder:
-                                                                              (context) {
-                                                                            return ReplaceItemPage(
-                                                                              item: items[index],
-                                                                              order: widget.order,
-                                                                              order_id: widget.order_id,
-                                                                            );
-                                                                          },
-                                                                        ));
+                                                              child: ElevatedButton(
+                                                                  onPressed: () {
+                                                                    Navigator.pushReplacement(context, MaterialPageRoute(
+                                                                      builder: (context) {
+                                                                        return ReplaceItemPage(
+                                                                          item: items[index],
+                                                                          order: widget.order,
+                                                                          order_id: widget.order_id,
+                                                                        );
                                                                       },
-                                                                      child:
-                                                                          Row(
-                                                                        mainAxisAlignment:
-                                                                            MainAxisAlignment.center,
-                                                                        children: [
-                                                                          Text(
-                                                                            "Заменить",
-                                                                          )
-                                                                        ],
-                                                                      )))
+                                                                    ));
+                                                                  },
+                                                                  child: Row(
+                                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                                    children: [
+                                                                      Text(
+                                                                        "Заменить",
+                                                                      )
+                                                                    ],
+                                                                  )))
                                                         ],
                                                       ),
                                                     ],
@@ -388,16 +332,12 @@ class _EditOrderPageState extends State<EditOrderPage> {
                                   children: [
                                     Text(
                                       options[index]["amount"].toString(),
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 20),
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                                     ),
                                     Icon(Icons.close),
                                     Text(
                                       options[index]["name"],
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 20),
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                                     )
                                   ],
                                 ),
@@ -416,8 +356,7 @@ class _EditOrderPageState extends State<EditOrderPage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton(
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                     onPressed: () {
                       orderReady(widget.order_id);
                     },

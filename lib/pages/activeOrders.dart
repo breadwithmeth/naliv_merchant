@@ -18,6 +18,8 @@ class ActiveOrders extends StatefulWidget {
 
 class _ActiveOrdersState extends State<ActiveOrders> {
   List orders = [];
+  bool isNew = false;
+  bool isAccepted = false;
 
   Future<void> _getActiveOrders() async {
     await getActiveOrders().then((v) {
@@ -26,12 +28,24 @@ class _ActiveOrdersState extends State<ActiveOrders> {
           orders = v["orders"];
         }
       });
+      List orders_new = orders
+          .where(
+            (element) => element["accepted_at"] == null,
+          )
+          .toList();
+      if (orders_new.isNotEmpty) {
+        isNew = true;
+        player.play(AssetSource("new.mp3"));
+      } else {
+        isAccepted = true;
+      }
     });
   }
 
   late Timer _timer;
   late AudioPlayer player = AudioPlayer();
   bool _isMenuOpen = true;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -71,15 +85,16 @@ class _ActiveOrdersState extends State<ActiveOrders> {
                   height: 100,
                 ),
                 ElevatedButton(
-                    onPressed: () {
-                      logout();
-                      Navigator.pushReplacement(context, MaterialPageRoute(
-                        builder: (context) {
-                          return Main();
-                        },
-                      ));
-                    },
-                    child: Text("Выйти"))
+                  onPressed: () {
+                    logout();
+                    Navigator.pushReplacement(context, MaterialPageRoute(
+                      builder: (context) {
+                        return Main();
+                      },
+                    ));
+                  },
+                  child: Text("Выйти"),
+                )
               ],
             ),
           ),
