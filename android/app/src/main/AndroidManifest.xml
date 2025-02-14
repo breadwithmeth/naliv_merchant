@@ -10,6 +10,7 @@
 
     <!-- foregroundServiceType: remoteMessaging -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- for utils -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />

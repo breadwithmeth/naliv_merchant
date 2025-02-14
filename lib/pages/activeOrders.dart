@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:naliv_merchant/NotificationController.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:naliv_merchant/main.dart';
@@ -25,20 +24,9 @@ class _ActiveOrdersState extends State<ActiveOrders> {
     await getActiveOrders().then((v) {
       setState(() {
         if (v != null) {
-          orders = v["orders"];
+          orders = v ?? [];
         }
       });
-      List orders_new = orders
-          .where(
-            (element) => element["accepted_at"] == null,
-          )
-          .toList();
-      if (orders_new.isNotEmpty) {
-        isNew = true;
-        player.play(AssetSource("new.mp3"));
-      } else {
-        isAccepted = true;
-      }
     });
   }
 
@@ -73,74 +61,57 @@ class _ActiveOrdersState extends State<ActiveOrders> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverOffstage(
-          offstage: _isMenuOpen,
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 100,
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    logout();
-                    Navigator.pushReplacement(context, MaterialPageRoute(
-                      builder: (context) {
-                        return Main();
-                      },
-                    ));
-                  },
-                  child: Text("Выйти"),
-                )
-              ],
-            ),
-          ),
-        ),
-        SliverAppBar(
-          automaticallyImplyLeading: false,
-          centerTitle: false,
-          title: Text(
-            "Заказы",
-            style: TextStyle(fontWeight: FontWeight.w900),
-          ),
-          leading: IconButton(
-              onPressed: () {
-                if (_isMenuOpen) {
-                  setState(() {
-                    _isMenuOpen = false;
-                  });
-                } else {
-                  setState(() {
-                    _isMenuOpen = true;
-                  });
-                }
-              },
-              icon: Icon(Icons.menu)),
-          actions: [
+    return Scaffold(
+      backgroundColor: Colors.white,
+      drawer: Drawer(
+        child: ListView(
+          children: [
             ElevatedButton(
-                onPressed: () {
-                  NotificationController.createNewNotification();
-                },
-                child: Text("data"))
+              onPressed: () {
+                logout();
+                Navigator.pushReplacement(context, MaterialPageRoute(
+                  builder: (context) {
+                    return Main();
+                  },
+                ));
+              },
+              child: Text("Выйти"),
+            )
           ],
         ),
-        SliverFillRemaining(
-            child: SingleChildScrollView(
-          child: ListView.builder(
-            shrinkWrap: true,
-            primary: false,
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              return OrderTile(
-                order: orders[index],
-              );
-            },
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            backgroundColor: Colors.white,
+            automaticallyImplyLeading: true,
+            centerTitle: false,
+            title: Text(
+              "Заказы",
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            actions: [
+              ElevatedButton(
+                  onPressed: () {
+                    // NotificationController.createNewNotification();
+                  },
+                  child: Text("data"))
+            ],
           ),
-        )),
-      ],
+          SliverToBoxAdapter(
+            child: ListView.builder(
+              shrinkWrap: true,
+              primary: false,
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                return OrderTile(
+                  order: orders[index],
+                );
+              },
+            ),
+          )
+        ],
+      ),
     );
   }
 }
@@ -163,7 +134,7 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
             Icons.circle,
             color: Colors.red,
           ),
-          Text("ne oplachen")
+          Text("Не оплачен")
         ],
       ));
     } else if (string == "0") {
@@ -225,17 +196,17 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
 
   void initItems() {
     setState(() {
-      items = widget.order["items"];
+      // items = widget.order["items"];
     });
     setState(() {
-      if (widget.order["ready_at"] != null) {
-        isReady = true;
-      }
-      if (widget.order["accepted_at"] == null) {
-        isNew = true;
-      } else {
-        isAccepted = true;
-      }
+      // if (widget.order["ready_at"] != null) {
+      //   isReady = true;
+      // }
+      // if (widget.order["accepted_at"] == null) {
+      //   isNew = true;
+      // } else {
+      //   isAccepted = true;
+      // }
     });
   }
 
@@ -256,142 +227,68 @@ class _OrderTileState extends State<OrderTile> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-        onTap: () {
-          if (!isReady) {
-            if (isNew) {
-              Navigator.pushReplacement(context, MaterialPageRoute(
-                builder: (context) {
-                  return OrderPage(
-                    order_id: widget.order["order_id"].toString(),
-                    order: widget.order,
-                  );
-                },
-              ));
-            }
-            if (isAccepted) {
-              Navigator.pushReplacement(context, MaterialPageRoute(
-                builder: (context) {
-                  return EditOrderPage(
-                    order_id: widget.order["order_id"].toString(),
-                    order: widget.order,
-                  );
-                },
-              ));
-            }
-          }
-        },
-        child: Card(
-                color: const Color.fromARGB(255, 240, 213, 213),
-                child: ExpansionTile(
-                  collapsedBackgroundColor: Colors.black,
-                  backgroundColor: Colors.black,
-                  title: GestureDetector(
-                    child: Row(
-                      children: [
-                        Icon(isReady ? Icons.done : Icons.circle),
-                        Text(
-                          widget.order["order_uuid"],
-                          style: TextStyle(
-                              color: isAccepted ? Colors.green : Colors.yellow),
-                        )
-                      ],
-                    ),
-                    onTap: () {
-                      if (!isReady) {
-                        if (isNew) {
-                          Navigator.pushReplacement(context, MaterialPageRoute(
-                            builder: (context) {
-                              return OrderPage(
-                                order_id: widget.order["order_id"].toString(),
-                                order: widget.order,
-                              );
-                            },
-                          ));
-                        }
-                        if (isAccepted) {
-                          Navigator.pushReplacement(context, MaterialPageRoute(
-                            builder: (context) {
-                              return EditOrderPage(
-                                order_id: widget.order["order_id"].toString(),
-                                order: widget.order,
-                              );
-                            },
-                          ));
-                        }
-                      }
-                    },
-                  ),
+      child: Container(
+          margin: EdgeInsets.all(15),
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black12, offset: Offset(1, 1), blurRadius: 5)
+              ],
+              color: Colors.white,
+              borderRadius: BorderRadius.all(
+                Radius.circular(15),
+              )),
+          child: Container(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.order["address"] ?? "Самовывоз",
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                ),
+                // getOrderStatusFormat(widget.order["order_status"]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ListView.builder(
-                      shrinkWrap: true,
-                      primary: false,
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: EdgeInsets.all(10),
-                          color: Colors.grey.shade900,
-                          child: Row(
-                            children: [
-                              Flexible(
-                                  child: Container(
-                                margin: EdgeInsets.all(10),
-                                child: items[index]["img"] != null
-                                    ? Image.network(items[index]["img"])
-                                    : Container(),
-                              )),
-                              Flexible(
-                                  flex: 4,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      if (!isReady) {
-                                        if (isNew) {
-                                          Navigator.pushReplacement(context,
-                                              MaterialPageRoute(
-                                            builder: (context) {
-                                              return OrderPage(
-                                                order_id: widget
-                                                    .order["order_id"]
-                                                    .toString(),
-                                                order: widget.order,
-                                              );
-                                            },
-                                          ));
-                                        }
-                                        if (isAccepted) {
-                                          Navigator.pushReplacement(context,
-                                              MaterialPageRoute(
-                                            builder: (context) {
-                                              return EditOrderPage(
-                                                order_id:
-                                                    widget.order["order_id"],
-                                                order: widget.order,
-                                              );
-                                            },
-                                          ));
-                                        }
-                                      }
-                                    },
-                                    child: Text(
-                                      items[index]["name"],
-                                      softWrap: true,
-                                      overflow: TextOverflow.fade,
-                                    ),
-                                  ))
-                            ],
-                          ),
-                        );
-                      },
-                    )
+                    Text(
+                      widget.order["order_id"].toString(),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 36,
+                          color: isAccepted
+                              ? Colors.green
+                              : Colors.yellowAccent.shade700),
+                    ),
+                    // IconButton(onPressed: () {}, icon: Icon(Icons.open_in_new))
                   ],
-                  // subtitle: getOrderStatusFormat(widget.order["order_status"]),
-                ))
-            .animate(
-              controller: _animationCtrl,
-              autoPlay: isNew,
-              onPlay: (controller) {
-                controller.repeat(reverse: true);
-              },
-            )
-            .shimmer(curve: Curves.decelerate, duration: Durations.long4));
+                ),
+              ],
+            ),
+          )),
+      onTap: () {
+        showModalBottomSheet(
+          useSafeArea: true,
+          showDragHandle: true,
+          enableDrag: true,
+          backgroundColor: Colors.white,
+          isScrollControlled: true,
+          constraints: BoxConstraints.tight(Size(
+              MediaQuery.of(context).size.width,
+              MediaQuery.of(context).size.height * 1)),
+          context: context,
+          builder: (context) => DraggableScrollableSheet(
+              expand: true,
+              initialChildSize: 0.9,
+              minChildSize: 0.9,
+              maxChildSize: 1,
+              builder: (context, scrollController) => OrderPage(
+                    order_id: widget.order["order_id"].toString(),
+                    scrollController: scrollController
+
+                  )),
+        );
+      },
+    );
   }
 }

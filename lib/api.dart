@@ -47,7 +47,7 @@ Future<bool> login(String token) async {
   }
 }
 
-Future<Map?> getActiveOrders() async {
+Future<List?> getActiveOrders() async {
   String? token = await getToken();
   print(token);
   if (token == null) {
@@ -62,7 +62,8 @@ Future<Map?> getActiveOrders() async {
     },
   );
 
-  Map result = json.decode(utf8.decode(response.bodyBytes));
+  List result = json.decode(response.body);
+  // print(result);
   return result;
 }
 

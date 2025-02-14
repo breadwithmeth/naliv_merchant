@@ -1,32 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:naliv_merchant/NotificationController.dart';
 import 'package:naliv_merchant/api.dart';
-import 'package:naliv_merchant/pages/bottomMenu.dart';
+import 'package:naliv_merchant/pages/activeOrders.dart';
 import 'package:naliv_merchant/pages/login.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Always initialize Awesome Notifications
-  await NotificationController.initializeLocalNotifications();
-  await NotificationController.initializeIsolateReceivePort();
-    FlutterForegroundTask.initCommunicationPort();
 
   runApp(Main());
 }
 
 class Main extends StatefulWidget {
   const Main({super.key});
-static final GlobalKey<NavigatorState> navigatorKey =
+  static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
   @override
   State<Main> createState() => _MainState();
 }
 
 class _MainState extends State<Main> {
-  
   Widget _redirect = Scaffold(
     body: Center(
       child: CircularProgressIndicator(),
@@ -37,7 +30,7 @@ class _MainState extends State<Main> {
     await getToken().then((token) {
       if (token != null) {
         setState(() {
-          _redirect = BottomMenu();
+          _redirect = ActiveOrders();
         });
       } else {
         setState(() {
@@ -56,8 +49,6 @@ class _MainState extends State<Main> {
 
   @override
   void initState() {
-        NotificationController.startListeningNotificationEvents();
-
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
@@ -66,7 +57,6 @@ class _MainState extends State<Main> {
     // TODO: implement initState
     _checkAuth();
     setState(() {});
-    
   }
 
   @override
@@ -74,17 +64,13 @@ class _MainState extends State<Main> {
     return MaterialApp(
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.white,
-          surface: Colors.black,
-          dynamicSchemeVariant: DynamicSchemeVariant.content,
+          seedColor: Colors.blueAccent,
+          dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
           contrastLevel: 0,
-          brightness: Brightness.dark,
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.transparent,
+          brightness: Brightness.light,
         ),
         useMaterial3: true,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
       ),
       home: _redirect,
     );

@@ -1,358 +1,586 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:naliv_merchant/api.dart';
-import 'package:naliv_merchant/pages/activeOrders.dart';
-import 'package:naliv_merchant/pages/editOrder.dart';
-import '../globals.dart' as globals;
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:input_quantity/input_quantity.dart';
 
 class OrderPage extends StatefulWidget {
-  const OrderPage({super.key, required this.order_id, required this.order});
+  const OrderPage(
+      {super.key, required this.order_id, required this.scrollController});
   final String order_id;
-  final Map order;
+  final ScrollController scrollController;
+
   @override
   State<OrderPage> createState() => _OrderPageState();
 }
 
 class _OrderPageState extends State<OrderPage> {
-  List items = [];
-  Map orderDetails = {};
-  Future<void> _getOrder() async {
-    await getOrderDetails(widget.order_id).then((v) {
-      print(v);
+  Map? order;
+  List order_items = [];
+  bool isOrderReady = false;
+  bool orderEditable = false;
+  _getOrder() async {
+    await getOrderDetails(widget.order_id).then((value) {
+      print(value);
       setState(() {
-        orderDetails = v;
-        items = v["items"]["items"];
+        order = value;
+        order_items = value["order"]["items"];
       });
+      checkOrderEditable();
     });
+  }
+
+  Widget getOrderStatusFormat(String string) {
+    if (string == "66") {
+      return Text("Не оплачен");
+    } else if (string == "0") {
+      return Text(
+        "Новый заказ",
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+      );
+    } else if (string == "1") {
+      return Text(
+        "Заказ отправлен в систему учета",
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+      );
+    } else if (string == "2") {
+      return Text(
+        "Заказ собран",
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+      );
+    } else if (string == "3") {
+      return Text(
+        "Заказ в пути",
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+      );
+    } else {
+      return Container();
+    }
   }
 
   late Timer _timer;
 
-  late int _start;
-
-  int currentTime = 1;
+  checkOrderEditable() {
+    if (order?["order"]["editable"]) {
+      setState(() {
+        isOrderReady = false;
+        orderEditable = true;
+      });
+    } else {
+      setState(() {
+        print("d332211");
+        isOrderReady = true;
+        orderEditable = false;
+      });
+    }
+  }
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    setState(() {
-      _start = widget.order["created_at"];
-    });
     _getOrder();
-    startTimer();
-  }
-
-  void startTimer() {
-    const oneSec = const Duration(seconds: 1);
-    _timer = new Timer.periodic(
-      oneSec,
-      (Timer timer) {
-        setState(() {
-          currentTime = _start + 600 - (DateTime.now().toUtc().millisecondsSinceEpoch / 1000).toInt();
-        });
-      },
-    );
+    _timer = Timer.periodic(new Duration(seconds: 5), (timer) {
+      debugPrint(timer.tick.toString());
+      _getOrder();
+    });
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    // TODO: implement dispose
     super.dispose();
+    _timer.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-          child: CustomScrollView(
-        shrinkWrap: true,
-        primary: false,
-        slivers: [
-          SliverToBoxAdapter(
-              child: Padding(
-            padding: EdgeInsets.all(30),
+      backgroundColor: Colors.white,
+      body: ListView(
+        controller: widget.scrollController,
+        physics: ClampingScrollPhysics(),
+        children: [
+          Text(order.toString()),
+          Container(
+            padding: EdgeInsets.all(15),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.max,
               children: [
                 Flexible(
-                  child: Text(
-                    "Заказ",
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
-                  ),
+                  child: getOrderStatusFormat(
+                      (order?["order"]["order_status"] ?? null).toString()),
                 ),
-                Flexible(
-                    child: GestureDetector(
-                  child: Text(
-                    "Назад",
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
-                  ),
-                  onTap: () {
-                    Navigator.pushReplacement(context, MaterialPageRoute(
-                      builder: (context) {
-                        return ActiveOrders();
-                      },
-                    ));
-                  },
-                ))
+                // Flexible(
+                //     flex: 1,
+                //     child: Container(
+                //       child: ElevatedButton(
+                //           onPressed: () {
+                //             orderReady(widget.order_id).then((v) {
+                //               Navigator.pop(context);
+                //             });
+                //           },
+                //           child: Text("Закончить редактирование")),
+                //     ))
               ],
             ),
-          )),
-          SliverToBoxAdapter(
-              child: Padding(
-            padding: EdgeInsets.all(30),
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Flexible(
-                  flex: 3,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          Flexible(
-                              child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Доставка",
-                                style: TextStyle(fontSize: 24),
-                              )
-                            ],
-                          )),
-                          Flexible(
-                              child: Row(
-                            mainAxisSize: MainAxisSize.max,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                widget.order["delivery_price"].toString() ?? "",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 24),
-                              )
-                            ],
-                          ))
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Flexible(
-                              child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Сумма",
-                                style: TextStyle(fontSize: 12),
-                              )
-                            ],
-                          )),
-                          Flexible(
-                              child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                orderDetails["sum"] == null
-                                    ? "999999"
-                                    : orderDetails["sum"].toString(),
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 12),
-                              )
-                            ],
-                          ))
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                    child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [Text(globals.formattedTime(timeInSecond: currentTime))],
-                ))
-              ],
+          ),
+          Container(
+            margin: EdgeInsets.all(15),
+            child: Text(
+              order?["order"]["address"] ?? "",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-          )),
-          SliverToBoxAdapter(
-              child: Card(
-            margin: EdgeInsets.all(20),
-            child: SingleChildScrollView(
-              child: ListView.builder(
-                shrinkWrap: true,
-                primary: false,
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  List options = items[index]["options"] ?? [];
-                  return Container(
-                      padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(border: Border(bottom: BorderSide(width: 2))),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            mainAxisSize: MainAxisSize.max,
+          ),
+          order == null
+              ? Center(
+                  child: CircularProgressIndicator(),
+                )
+              : Container(
+                  child: ListView.builder(
+                    physics: NeverScrollableScrollPhysics(),
+                    primary: false,
+                    shrinkWrap: true,
+                    itemCount: order_items.length,
+                    itemBuilder: (context, index) {
+                      List option_items = order_items[index]["items"] ?? [];
+                      return Slidable(
+                          enabled: orderEditable,
+                          closeOnScroll: true,
+                          startActionPane: ActionPane(
+                            // A motion is a widget used to control how the pane animates.
+                            motion: DrawerMotion(),
+
+                            // A pane can dismiss the Slidable.
+
+                            // All actions are defined in the children parameter.
                             children: [
                               Flexible(
-                                  flex: 2,
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return Container(
-                                        margin: EdgeInsets.all(5),
-                                        clipBehavior:
-                                            Clip.antiAliasWithSaveLayer,
-                                        decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(
-                                                Radius.circular(20))),
-                                        width: constraints.maxWidth,
-                                        height: constraints.maxWidth,
-                                        child: items[index]["img"] != null
-                                            ? Image.network(items[index]["img"])
-                                            : Container(),
+                                  child: GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    backgroundColor: Colors.white,
+                                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                                    context: context,
+                                    builder: (context) {
+                                      return ReplaceItemDialog(
+                                        order_item: order_items[index],
                                       );
                                     },
-                                  )),
-                              Flexible(
-                                flex: 5,
-                                child: Text(
-                                  items[index]["name"],
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
-                                ),
-                              ),
-                              Flexible(
-                                  flex: 3,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
+                                  ).then((onValue) {
+                                    _getOrder();
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(30)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                            offset: Offset(2, 2),
+                                            blurRadius: 5,
+                                            color: Colors.black12)
+                                      ],
+                                      color: Colors.redAccent),
+                                  alignment: Alignment.center,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        items[index]["amount"].toString(),
-                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
+                                      Icon(
+                                        Icons.find_replace,
+                                        color: Colors.white,
+                                        size: 48,
                                       ),
+                                      Text(
+                                        "Заменить",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 24),
+                                      )
                                     ],
-                                  )),
+                                  ),
+                                ),
+                              )),
                               Flexible(
-                                  child: options.length != 0
-                                      ? Container()
-                                      : IconButton(
-                                          iconSize: 36,
-                                          onPressed: () {
-                                            showAdaptiveDialog(
-                                              barrierDismissible: true,
-                                              context: context,
-                                              builder: (context) {
-                                                return AlertDialog(
-                                                  backgroundColor: Colors.white,
-                                                  alignment: Alignment.center,
-                                                  actionsAlignment: MainAxisAlignment.center,
-                                                  content: Container(
-                                                      child: Column(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      items[index]["img"] != null
-                                                          ? Flexible(
-                                                              child: Image.network(items[index]["img"]),
-                                                            )
-                                                          : SizedBox(),
-                                                      Flexible(
-                                                          child: Row(
-                                                        children: [
-                                                          Flexible(
-                                                            flex: 5,
-                                                            child: Text(
-                                                              items[index]["name"],
-                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
-                                                            ),
-                                                          ),
-                                                          Flexible(
-                                                              flex: 3,
-                                                              child: Row(
-                                                                mainAxisAlignment: MainAxisAlignment.end,
-                                                                children: [
-                                                                  Text(
-                                                                    items[index]["amount"].toString(),
-                                                                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 24),
-                                                                  ),
-                                                                ],
-                                                              )),
-                                                        ],
-                                                      )),
-                                                      Flexible(
-                                                          child: Row(
-                                                        children: [
-                                                          Flexible(
-                                                            flex: 5,
-                                                            child: Text(
-                                                              items[index]["code"],
-                                                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 16),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      )),
-                                                    ],
-                                                  )),
-                                                  actions: [],
-                                                );
-                                              },
-                                            );
-                                          },
-                                          icon: Icon(Icons.more_vert))),
+                                  child: GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                                    context: context,
+                                    builder: (context) {
+                                      return ChangeAmountDialog(
+                                        order_item: order_items[index],
+                                      );
+                                    },
+                                  ).then((onValue) {
+                                    _getOrder();
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(30)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                            offset: Offset(2, 2),
+                                            blurRadius: 5,
+                                            color: Colors.black12)
+                                      ],
+                                      color: Colors.blueAccent),
+                                  alignment: Alignment.center,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.edit,
+                                        color: Colors.white,
+                                        size: 48,
+                                      ),
+                                      Text(
+                                        "Изменить количество",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 24),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              )),
                             ],
                           ),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            primary: false,
-                            itemCount: options.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                title: Row(
-                                  children: [
-                                    Text(
-                                      options[index]["amount"].toString(),
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                          child: Container(
+                            padding: EdgeInsets.all(15),
+                            margin: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: Colors.black12,
+                                      offset: Offset(1, 1),
+                                      blurRadius: 5)
+                                ],
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(15))),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Flexible(
+                                    child: Container(
+                                  margin: EdgeInsets.all(10),
+                                  clipBehavior: Clip.antiAliasWithSaveLayer,
+                                  decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                            offset: Offset(1, 1),
+                                            blurRadius: 5,
+                                            color: Colors.black12)
+                                      ],
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(15))),
+                                  child: AspectRatio(
+                                    aspectRatio: 1,
+                                    child: Image.network(
+                                      order_items[index]["img"] ?? "/",
+                                      fit: BoxFit.cover,
                                     ),
-                                    Icon(Icons.close),
-                                    Text(
-                                      options[index]["name"],
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
-                                    )
-                                  ],
-                                ),
-                              );
-                            },
-                          )
-                        ],
-                      ));
-                },
-              ),
-            ),
-          )),
-          SliverToBoxAdapter(
-            child: Container(
-                child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-                    onPressed: () {
-                      acceptOrder(widget.order_id).then((v) {
-                        Navigator.pushReplacement(context, MaterialPageRoute(
-                          builder: (context) {
-                            return EditOrderPage(
-                                order_id: widget.order_id.toString(),
-                                order: widget.order);
-                          },
-                        ));
-                      });
+                                  ),
+                                )),
+                                Flexible(
+                                    flex: 5,
+                                    child: Container(
+                                      alignment: Alignment.topLeft,
+                                      margin: EdgeInsets.all(10),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    order_items[index]["amount"]
+                                                        .toString(),
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 24),
+                                                  ),
+                                                  Icon(Icons.close),
+                                                  Text(
+                                                    order_items[index]["name"],
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 24),
+                                                  ),
+                                                ],
+                                              ),
+                                              IconButton(
+                                                  onPressed: () {},
+                                                  icon: Icon(Icons.edit))
+                                            ],
+                                          ),
+                                          ListView.builder(
+                                            primary: false,
+                                            shrinkWrap: true,
+                                            itemCount: option_items.length,
+                                            itemBuilder: (context, index2) {
+                                              return Row(
+                                                children: [
+                                                  Text(
+                                                    option_items[index2]
+                                                            ["amount"]
+                                                        .toString(),
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 20),
+                                                  ),
+                                                  Icon(
+                                                    Icons.close,
+                                                    size: 16,
+                                                  ),
+                                                  Text(
+                                                    option_items[index2]
+                                                        ["name"],
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 20),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          )
+                                        ],
+                                      ),
+                                    ))
+                              ],
+                            ),
+                          ));
                     },
-                    child: Text("Принять заказ")),
-              ],
-            )),
+                  ),
+                ),
+          orderEditable
+              ? ElevatedButton(
+                  onPressed: () {
+                    orderReady(widget.order_id).then((v) {
+                      Navigator.pop(context);
+                    });
+                  },
+                  child: Text("Закончить редактирование"))
+              : Container(),
+        ],
+      ),
+    );
+  }
+}
+
+class ChangeAmountDialog extends StatefulWidget {
+  const ChangeAmountDialog({super.key, required this.order_item});
+  final Map order_item;
+  @override
+  State<ChangeAmountDialog> createState() => _ChangeAmountDialogState();
+}
+
+class _ChangeAmountDialogState extends State<ChangeAmountDialog> {
+  num amount = 0;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.all(15),
+      margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InputQty(
+            decoration: QtyDecorationProps(
+              plusBtn: Container(
+                padding: EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(Radius.circular(500)),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          offset: Offset(2, 2),
+                          blurRadius: 5,
+                          color: Colors.black26)
+                    ]),
+                child: Icon(
+                  Icons.add,
+                  color: Colors.blueAccent,
+                  size: 36,
+                ),
+              ),
+              minusBtn: Container(
+                padding: EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(Radius.circular(500)),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          offset: Offset(2, 2),
+                          blurRadius: 5,
+                          color: Colors.black26)
+                    ]),
+                child: Icon(
+                  Icons.remove,
+                  color: Colors.blueAccent,
+                  size: 36,
+                ),
+              ),
+              width: 20,
+              borderShape: BorderShapeBtn.none,
+              btnColor: Colors.blueAccent,
+              fillColor: Colors.white,
+              isBordered: false,
+            ),
+            qtyFormProps: QtyFormProps(
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              cursorColor: Colors.red,
+              enableTyping: true,
+            ),
+            maxVal: widget.order_item["amount"],
+            initVal: widget.order_item["amount"],
+            minVal: 0,
+            steps: 1,
+            onQtyChanged: (val) {
+              setState(() {
+                amount = val;
+              });
+              print(amount);
+            },
+          ),
+          Row(
+            children: [
+              Text(
+                widget.order_item["amount"].toString(),
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
+              ),
+              Icon(Icons.close),
+              Text(
+                widget.order_item["name"],
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
+              ),
+            ],
+          ),
+          // TextField(
+          //   controller: amount,
+          //   decoration: InputDecoration(
+          //       border:
+          //           OutlineInputBorder()),
+          //   keyboardType:
+          //       TextInputType.number,
+          //   inputFormatters: <TextInputFormatter>[
+          //     FilteringTextInputFormatter
+          //         .allow(RegExp(
+          //             r'^\d*\.?\d*$'))
+          //   ], // O
+          // ),
+          ElevatedButton(
+              onPressed: () {
+                if (amount >= (widget.order_item["amount"] as num)) {
+                  print(amount);
+                  SnackBar(content: Text("Ты что не так делаешь"));
+                }
+
+                changeAmount(
+                        widget.order_item["relation_id"], amount.toString())
+                    .then((v) {});
+                Navigator.pop(context);
+              },
+              child: Text("Подтвердить")),
+          SizedBox(
+            height: 200,
           )
         ],
-      )),
+      ),
+    );
+  }
+}
+
+class ReplaceItemDialog extends StatefulWidget {
+  const ReplaceItemDialog({super.key, required this.order_item});
+  final Map order_item;
+
+  @override
+  State<ReplaceItemDialog> createState() => _ReplaceItemDialogState();
+}
+
+class _ReplaceItemDialogState extends State<ReplaceItemDialog> {
+  List replacementItems = [];
+  _getReplacements() {
+    getReplacementItems(widget.order_item["relation_id"].toString())
+        .then((value) {
+      setState(() {
+        replacementItems = value ?? [];
+      });
+    });
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _getReplacements();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(15),
+      child: ListView.builder(
+        itemCount: replacementItems.length,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: EdgeInsets.all(10),
+            child: GestureDetector(
+              child: Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(Radius.circular(15)),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          offset: Offset(2, 2),
+                          blurRadius: 3,
+                          color: Colors.black26)
+                    ]),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(replacementItems[index]["name"]),
+                    TextButton(
+                        onPressed: () {
+                          replaceItem(
+                                  widget.order_item["relation_id"].toString(),
+                                  replacementItems[index]["item_id"].toString())
+                              .then((v) {
+                            Navigator.pop(context);
+                          });
+                        },
+                        child: Text("Выбрать"))
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
