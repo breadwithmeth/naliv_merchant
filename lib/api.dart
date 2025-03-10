@@ -201,3 +201,58 @@ Future<bool?> replaceItem(String relation_id, String item_id) async {
 
   return data;
 }
+
+Future<bool?> addItemStopList(String item_id, String interval) async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/stopList');
+  var response = await client.post(
+    url,
+    body: json.encode({'interval': interval, 'item_id': item_id}),
+    headers: {"Content-Type": "application/json", "AUTH": token},
+  );
+  print(response.body);
+  bool? data = jsonDecode(response.body);
+
+  return data;
+}
+
+Future<Map?> getItems() async {
+  String? token = await getToken();
+  print(token);
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/item');
+  var response = await client.post(
+    url,
+    headers: {
+      "Content-Type": "application/json",
+      "AUTH": token,
+    },
+  );
+
+  Map result = json.decode(response.body);
+  // print(result);
+  return result;
+}
+
+Future<List?> getItemStopList() async {
+  String? token = globals.currentToken;
+
+  if (token == null) {
+    return null;
+  }
+  var url = Uri.https(URL_API, 'api/merchant/stopList');
+  var response = await client.get(
+    url,
+    headers: {"Content-Type": "application/json", "AUTH": token},
+  );
+  print(response.body);
+  List? data = jsonDecode(response.body);
+
+  return data;
+}

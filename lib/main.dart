@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:naliv_merchant/api.dart';
 import 'package:naliv_merchant/pages/activeOrders.dart';
 import 'package:naliv_merchant/pages/login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Always initialize Awesome Notifications
-
   runApp(Main());
 }
 
@@ -20,9 +17,9 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
-  Widget _redirect = Scaffold(
-    body: Center(
-      child: CircularProgressIndicator(),
+  Widget _redirect = CupertinoPageScaffold(
+    child: Center(
+      child: CupertinoActivityIndicator(),
     ),
   );
 
@@ -38,39 +35,26 @@ class _MainState extends State<Main> {
         });
       }
     });
-
-    // _requestPermission().then((value) async {
-    //   if (value) {
-    //   } else {
-    //     _redirect = PermissionPage();
-    //   }
-    // });
   }
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       print(MediaQuery.of(context).size.aspectRatio);
     });
-    // TODO: implement initState
     _checkAuth();
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueAccent,
-          dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-          contrastLevel: 0,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
+    return CupertinoApp(
+      theme: const CupertinoThemeData(
+        primaryColor: CupertinoColors.activeOrange,
         brightness: Brightness.light,
+        scaffoldBackgroundColor: CupertinoColors.white,
+        barBackgroundColor: CupertinoColors.activeOrange,
       ),
       home: _redirect,
     );
