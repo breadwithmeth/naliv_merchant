@@ -1,11 +1,9 @@
-import 'package:flutter/cupertino.dart';
-import 'package:naliv_merchant/api.dart';
-import 'package:naliv_merchant/pages/activeOrders.dart';
-import 'package:naliv_merchant/pages/login.dart';
+import 'package:flutter/material.dart';
+import 'screens/auth_wrapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(Main());
+  runApp(const Main());
 }
 
 class Main extends StatefulWidget {
@@ -17,46 +15,27 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
-  Widget _redirect = CupertinoPageScaffold(
-    child: Center(
-      child: CupertinoActivityIndicator(),
-    ),
-  );
-
-  Future<void> _checkAuth() async {
-    await getToken().then((token) {
-      if (token != null) {
-        setState(() {
-          _redirect = ActiveOrders();
-        });
-      } else {
-        setState(() {
-          _redirect = LoginPage();
-        });
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      print(MediaQuery.of(context).size.aspectRatio);
-    });
-    _checkAuth();
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
-    return CupertinoApp(
-      theme: const CupertinoThemeData(
-        primaryColor: CupertinoColors.activeOrange,
+    return MaterialApp(
+      title: 'Naliv Merchant',
+      theme: ThemeData(
+        primarySwatch: Colors.orange,
+        primaryColor: Colors.orange,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: CupertinoColors.white,
-        barBackgroundColor: CupertinoColors.activeOrange,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.orange,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
       ),
-      home: _redirect,
+      home: const AuthWrapper(),
     );
   }
 }
