@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../utils/token_manager.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000';
+  static const String baseUrl = 'https://naliv-b-jue85.ondigitalocean.app';
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await TokenManager.getToken();
