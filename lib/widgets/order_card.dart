@@ -100,51 +100,51 @@ class OrderCard extends StatelessWidget {
               const SizedBox(height: 12),
 
               // Нижняя секция с суммой и количеством товаров
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Товаров: ${order.itemsCount}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        order.paymentType?.name ?? 'Способ оплаты не указан',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${order.totalCost} ₸',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                      if (order.deliveryPrice > 0)
-                        Text(
-                          'Доставка: ${order.deliveryPrice} ₸',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Text(
+              //           'Товаров: ${order.itemsCount}',
+              //           style: const TextStyle(
+              //             fontSize: 14,
+              //             color: Colors.grey,
+              //           ),
+              //         ),
+              //         Text(
+              //           order.paymentType?.name ?? 'Способ оплаты не указан',
+              //           style: const TextStyle(
+              //             fontSize: 12,
+              //             color: Colors.grey,
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //     Column(
+              //       crossAxisAlignment: CrossAxisAlignment.end,
+              //       children: [
+              //         Text(
+              //           '${order.totalCost} ₸',
+              //           style: const TextStyle(
+              //             fontSize: 18,
+              //             fontWeight: FontWeight.bold,
+              //             color: Colors.orange,
+              //           ),
+              //         ),
+              //         if (order.deliveryPrice > 0)
+              //           Text(
+              //             'Доставка: ${order.deliveryPrice} ₸',
+              //             style: const TextStyle(
+              //               fontSize: 12,
+              //               color: Colors.grey,
+              //             ),
+              //           ),
+              //       ],
+              //     ),
+              //   ],
+              // ),
             ],
           ),
         ),

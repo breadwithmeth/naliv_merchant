@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import '../utils/token_manager.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://naliv-b-jue85.ondigitalocean.app';
+  static const String baseUrl = 'https://njt25.naliv.kz';
+  // static const String baseUrl = 'http://localhost:3000';
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await TokenManager.getToken();
@@ -82,6 +83,8 @@ class ApiService {
         body: json.encode({'status': status}),
       );
 
+      print('Response status: ${response.statusCode}');
+
       return response.statusCode == 200;
     } catch (e) {
       print('Error updating order status: $e');
@@ -106,10 +109,45 @@ class ApiService {
         body: json.encode({'amount': amount}),
       );
 
+      print('Response status: ${response.statusCode}');
+
       return response.statusCode == 200;
     } catch (e) {
       print('Error updating order item amount: $e');
       return false;
+    }
+  }
+
+  /// Отчет по курьерам за период
+  static Future<dynamic> getCourierReports({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      String _fmt(DateTime d) {
+        String two(int v) => v.toString().padLeft(2, '0');
+        return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+      }
+
+      final queryParams = {
+        'start_date': _fmt(startDate),
+        'end_date': _fmt(endDate),
+      };
+      final uri = Uri.parse('$baseUrl/api/businesses/reports/couriers')
+          .replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: headers);
+      print(response.body);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] ?? data; // возвращаем полезную часть или всё
+      } else {
+        print('Failed to load courier reports: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching courier reports: $e');
+      return null;
     }
   }
 }

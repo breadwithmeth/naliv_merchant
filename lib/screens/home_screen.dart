@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/token_manager.dart';
 import '../services/api_service.dart';
 import '../widgets/order_card.dart';
 import '../screens/order_detail_screen.dart';
 import 'login_screen.dart';
+import 'courier_reports_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,12 +20,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingOrders = false;
   String? _errorMessage;
   int _currentPage = 1;
+  Timer? _refreshTimer; // таймер автообновления
 
   @override
   void initState() {
     super.initState();
     _loadToken();
     _loadOrders();
+    _startAutoRefresh(); // запуск автообновления
   }
 
   Future<void> _loadToken() async {
@@ -68,6 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      _loadOrders();
+    });
+  }
+
   Future<void> _logout() async {
     showDialog(
       context: context,
@@ -100,6 +112,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -107,6 +125,17 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.insert_chart_outlined),
+            tooltip: 'Отчет курьеры',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CourierReportsScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadOrders,
@@ -218,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) =>
                   OrderDetailScreen(orderId: _orders[index].orderId),
             ),
-          ),
+          ).then((_) => _loadOrders()), // обновить список после возврата
         );
       },
     );
