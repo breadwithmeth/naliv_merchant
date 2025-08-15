@@ -486,6 +486,7 @@ class OrderItem {
   final String name;
   final String description;
   final String? img;
+  final String? barcode; // Добавлено поле для штрихкода
   final double amount;
   final int price;
   final String unit;
@@ -499,6 +500,7 @@ class OrderItem {
     required this.name,
     required this.description,
     this.img,
+    this.barcode,
     required this.amount,
     required this.price,
     required this.unit,
@@ -514,6 +516,7 @@ class OrderItem {
       name: json['name'] ?? 'Неизвестный товар',
       description: json['description'] ?? '',
       img: json['img'],
+      barcode: json['barcode'] ?? '', // Извлечение штрихкода
       amount: (json['amount'] ?? 0.0).toDouble(),
       price: json['price'] ?? 0,
       unit: json['unit'] ?? '',

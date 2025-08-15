@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -17,11 +18,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   OrderDetails? _orderDetails;
   bool _isLoading = true;
   String? _error;
+  final TextEditingController _barcodeCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadOrderDetails();
+  }
+
+  @override
+  void dispose() {
+    _barcodeCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadOrderDetails() async {
@@ -71,6 +79,56 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  Future<void> _startBarcodeScan() async {
+    try {
+      final res = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SimpleBarcodeScannerPage(),
+        ),
+      );
+      final String? barcode = res is String ? res : null;
+      if (barcode == null || barcode.isEmpty) return;
+      setState(() => _barcodeCtrl.text = barcode);
+      _findItemByBarcodeAndEdit(barcode);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка сканирования: $e')),
+      );
+    }
+  }
+
+  void _onManualBarcodeSubmit() {
+    final code = _barcodeCtrl.text.trim();
+    if (code.isEmpty) return;
+    _findItemByBarcodeAndEdit(code);
+  }
+
+  void _findItemByBarcodeAndEdit(String barcode) {
+    if (_orderDetails == null) return;
+    final items = _orderDetails!.order.items;
+    OrderItem? match;
+    final scanned = barcode.trim();
+    for (final it in items) {
+      final bc = (it.barcode ?? '').trim();
+      if (bc.isNotEmpty && bc == scanned) {
+        match = it;
+        break;
+      }
+      if (it.name.trim() == scanned) {
+        match = it;
+        break;
+      }
+    }
+    if (match == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Товар со штрихкодом "$barcode" не найден')),
+      );
+      return;
+    }
+    _showEditAmountDialog(match);
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
@@ -117,6 +175,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildScannerBar(),
+          const SizedBox(height: 12),
+
           // Статус заказа
           _buildStatusSection(),
           const SizedBox(height: 24),
@@ -146,6 +207,77 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // Кнопки действий
           _buildActionButtons(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScannerBar() {
+    final canEdit = _orderDetails?.order.currentStatus.status == 1;
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.qr_code_scanner, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text(
+                  'Сканер штрихкодов',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                if (!canEdit)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('Только просмотр',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _startBarcodeScan,
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Сканировать'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _barcodeCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Введите или вставьте штрихкод',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onSubmitted: (_) => _onManualBarcodeSubmit(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Найти товар',
+                  onPressed: _onManualBarcodeSubmit,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -487,6 +619,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    Text(
+                      item.barcode ?? 'Штрихкод не указан',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey,
+                      ),
+                    ),
                     Row(
                       children: [
                         Text(
@@ -497,6 +637,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           ),
                         ),
                         const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.qr_code_scanner, size: 20),
+                          tooltip: 'Сканировать для этого товара',
+                          onPressed: _startBarcodeScan,
+                        ),
                         if (_orderDetails!.order.currentStatus.status == 1)
                           IconButton(
                             icon: const Icon(Icons.edit, size: 20),

@@ -28,5 +28,8 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- Camera permission reason for barcode scanner on macOS -->
+	<key>NSCameraUsageDescription</key>
+	<string>Доступ к камере нужен для сканирования штрихкодов товаров.</string>
 </dict>
 </plist>

@@ -43,6 +43,7 @@ dependencies:
   flutter_slidable: ^4.0.0
   input_quantity: ^2.5.1
   intl: ^0.20.2
+  simple_barcode_scanner: ^0.1.0
 
 dev_dependencies:
   flutter_test:
