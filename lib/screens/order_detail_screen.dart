@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
-import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -19,16 +20,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _isLoading = true;
   String? _error;
   final TextEditingController _barcodeCtrl = TextEditingController();
+  final FocusNode _barcodeFocusNode = FocusNode();
+  bool _showLiveScanner = false;
+  final MobileScannerController _scannerController = MobileScannerController();
+  final Map<int, double> _originalAmounts =
+      {}; // relationId -> исходное количество
+  final Map<int, double> _updatedAmounts =
+      {}; // relationId -> обновленное количество
+  final Set<int> _confirmedItems = {}; // relationId подтвержденных
 
   @override
   void initState() {
     super.initState();
     _loadOrderDetails();
+    _barcodeFocusNode.addListener(() {
+      if (_barcodeFocusNode.hasFocus) {
+        // Прячем виртуальную клавиатуру, оставляя фокус для аппаратного ввода
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      }
+    });
   }
 
   @override
   void dispose() {
     _barcodeCtrl.dispose();
+    _barcodeFocusNode.dispose();
+    _scannerController.dispose();
     super.dispose();
   }
 
@@ -47,6 +64,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _isLoading = false;
         if (details == null) {
           _error = 'Не удалось загрузить детали заказа';
+        }
+        if (details != null) {
+          for (final item in details.order.items) {
+            _originalAmounts.putIfAbsent(item.relationId, () => item.amount);
+          }
+          // чистим удалённые
+          final ids = details.order.items.map((e) => e.relationId).toSet();
+          _originalAmounts.removeWhere((k, v) => !ids.contains(k));
+          _updatedAmounts.removeWhere((k, v) => !ids.contains(k));
+          _confirmedItems.removeWhere((k) => !ids.contains(k));
+          // восстанавливаем подтверждение для уже изменённых ранее товаров
+          for (final item in details.order.items) {
+            if (_updatedAmounts.containsKey(item.relationId)) {
+              _confirmedItems.add(item.relationId);
+            }
+          }
         }
       });
     } catch (e) {
@@ -80,28 +113,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _startBarcodeScan() async {
-    try {
-      final res = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const SimpleBarcodeScannerPage(),
-        ),
-      );
-      final String? barcode = res is String ? res : null;
-      if (barcode == null || barcode.isEmpty) return;
-      setState(() => _barcodeCtrl.text = barcode);
-      _findItemByBarcodeAndEdit(barcode);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка сканирования: $e')),
-      );
-    }
+    setState(() => _showLiveScanner = true);
   }
 
   void _onManualBarcodeSubmit() {
     final code = _barcodeCtrl.text.trim();
     if (code.isEmpty) return;
     _findItemByBarcodeAndEdit(code);
+    // очищаем поле после обработки
+    _barcodeCtrl.clear();
   }
 
   void _findItemByBarcodeAndEdit(String barcode) {
@@ -129,7 +149,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _showEditAmountDialog(match);
   }
 
+  bool _hasIncompleteAmounts() {
+    final items = _orderDetails?.order.items;
+    if (items == null || items.isEmpty) return true;
+    for (final it in items) {
+      if (it.amount <= 0) return true;
+      if (!_confirmedItems.contains(it.relationId)) return true;
+    }
+    return false;
+  }
+
   Widget _buildBody() {
+    final size = MediaQuery.of(context).size;
+    final isSmall =
+        size.width < 380 || size.height < 700; // эвристика маленького экрана
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -171,38 +204,40 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isSmall ? 10 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildScannerBar(),
-          const SizedBox(height: 12),
+          SizedBox(height: isSmall ? 8 : 12),
 
           // Статус заказа
           _buildStatusSection(),
-          const SizedBox(height: 24),
+          SizedBox(height: isSmall ? 16 : 24),
+
+          // Финансовая информация
+          _buildFinancialSection(),
+          SizedBox(height: isSmall ? 16 : 24),
+          _buildExtraSection(),
+          SizedBox(height: isSmall ? 16 : 24),
 
           // Информация о клиенте
           _buildClientSection(),
-          const SizedBox(height: 24),
+          SizedBox(height: isSmall ? 16 : 24),
 
           // Информация о доставке
           if (_orderDetails!.order.deliveryAddress != null) ...[
             _buildDeliverySection(),
-            const SizedBox(height: 24),
+            SizedBox(height: isSmall ? 16 : 24),
           ],
 
           // Товары в заказе
           _buildItemsSection(),
-          const SizedBox(height: 24),
-
-          // Финансовая информация
-          _buildFinancialSection(),
-          const SizedBox(height: 24),
+          SizedBox(height: isSmall ? 16 : 24),
 
           // История статусов
           _buildStatusHistorySection(),
-          const SizedBox(height: 32),
+          SizedBox(height: isSmall ? 20 : 32),
 
           // Кнопки действий
           _buildActionButtons(context),
@@ -212,21 +247,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Widget _buildScannerBar() {
+    final size = MediaQuery.of(context).size;
+    final isSmall = size.width < 380 || size.height < 700;
+    final narrow = size.width < 360; // очень узкий
     final canEdit = _orderDetails?.order.currentStatus.status == 1;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isSmall ? 10 : 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 const Icon(Icons.qr_code_scanner, color: Colors.orange),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: isSmall ? 6 : 8),
+                Text(
                   'Сканер штрихкодов',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: isSmall ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
                 if (!canEdit)
@@ -242,40 +283,139 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _startBarcodeScan,
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Сканировать'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _barcodeCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Введите или вставьте штрихкод',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            SizedBox(height: isSmall ? 6 : 8),
+            if (!narrow)
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _startBarcodeScan,
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(
+                        _showLiveScanner ? 'Сканер открыт' : 'Сканировать'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(isSmall ? 10 : 0, 40),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmall ? 10 : 16,
+                        vertical: isSmall ? 10 : 12,
+                      ),
                     ),
-                    onSubmitted: (_) => _onManualBarcodeSubmit(),
                   ),
+                  SizedBox(width: isSmall ? 8 : 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _barcodeCtrl,
+                      focusNode: _barcodeFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Штрихкод',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: isSmall ? 8 : 10),
+                      ),
+                      onTap: () => SystemChannels.textInput
+                          .invokeMethod('TextInput.hide'),
+                      onSubmitted: (_) => _onManualBarcodeSubmit(),
+                    ),
+                  ),
+                  SizedBox(width: isSmall ? 6 : 8),
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    tooltip: 'Найти товар',
+                    onPressed: _onManualBarcodeSubmit,
+                  ),
+                ],
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _startBarcodeScan,
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(
+                        _showLiveScanner ? 'Сканер открыт' : 'Сканировать'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: isSmall ? 10 : 12),
+                    ),
+                  ),
+                  SizedBox(height: isSmall ? 8 : 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _barcodeCtrl,
+                          focusNode: _barcodeFocusNode,
+                          decoration: InputDecoration(
+                            hintText: 'Штрихкод',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: isSmall ? 8 : 10),
+                          ),
+                          onTap: () => SystemChannels.textInput
+                              .invokeMethod('TextInput.hide'),
+                          onSubmitted: (_) => _onManualBarcodeSubmit(),
+                        ),
+                      ),
+                      SizedBox(width: isSmall ? 6 : 8),
+                      IconButton(
+                        icon: const Icon(Icons.search),
+                        tooltip: 'Найти',
+                        onPressed: _onManualBarcodeSubmit,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            if (_showLiveScanner)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                height: isSmall ? 160 : 220,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange, width: 2),
+                  color: Colors.black,
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  tooltip: 'Найти товар',
-                  onPressed: _onManualBarcodeSubmit,
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: MobileScanner(
+                        controller: _scannerController,
+                        onDetect: (capture) {
+                          final barcodes = capture.barcodes;
+                          if (barcodes.isEmpty) return;
+                          final code = barcodes.first.rawValue;
+                          if (code == null) return;
+                          if (!_showLiveScanner) return; // уже закрываем
+                          setState(() {
+                            _barcodeCtrl.text = code;
+                            _showLiveScanner = false; // спрячем после скана
+                          });
+                          _findItemByBarcodeAndEdit(code);
+                          // очищаем для следующего ввода / скана
+                          _barcodeCtrl.clear();
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () =>
+                            setState(() => _showLiveScanner = false),
+                        tooltip: 'Закрыть сканер',
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -284,39 +424,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildStatusSection() {
     final status = _orderDetails!.order.currentStatus;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Статус заказа',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmall ? 16 : 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 8 : 12),
             Row(
               children: [
                 _buildStatusIndicator(status.status),
-                const SizedBox(width: 12),
+                SizedBox(width: isSmall ? 8 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         status.statusName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmall ? 14 : 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         _formatDate(status.timestamp),
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: isSmall ? 12 : 14,
                           color: Colors.grey,
                         ),
                       ),
@@ -361,9 +503,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         icon = Icons.help_outline;
     }
 
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Container(
-      width: 48,
-      height: 48,
+      width: isSmall ? 40 : 48,
+      height: isSmall ? 40 : 48,
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         shape: BoxShape.circle,
@@ -371,49 +515,51 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       child: Icon(
         icon,
         color: color,
-        size: 24,
+        size: isSmall ? 20 : 24,
       ),
     );
   }
 
   Widget _buildClientSection() {
     final user = _orderDetails!.order.user;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Клиент',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmall ? 16 : 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 8 : 12),
             Row(
               children: [
                 const CircleAvatar(
                   backgroundColor: Colors.orange,
                   child: Icon(Icons.person, color: Colors.white),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: isSmall ? 8 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         user.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmall ? 14 : 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         'ID: ${user.userId}',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: isSmall ? 12 : 14,
                           color: Colors.grey,
                         ),
                       ),
@@ -436,57 +582,59 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildDeliverySection() {
     final address = _orderDetails!.order.deliveryAddress!;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Доставка',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmall ? 16 : 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 8 : 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(Icons.location_on, color: Colors.orange),
-                const SizedBox(width: 12),
+                SizedBox(width: isSmall ? 8 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         address.address,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmall ? 14 : 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       if (address.details?.apartment?.isNotEmpty == true)
                         Text(
                           'Кв. ${address.details!.apartment}',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: isSmall ? 12 : 14,
                             color: Colors.grey,
                           ),
                         ),
                       if (address.details?.entrance?.isNotEmpty == true)
                         Text(
                           'Подъезд ${address.details!.entrance}',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: isSmall ? 12 : 14,
                             color: Colors.grey,
                           ),
                         ),
                       if (address.details?.floor?.isNotEmpty == true)
                         Text(
                           'Этаж ${address.details!.floor}',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: isSmall ? 12 : 14,
                             color: Colors.grey,
                           ),
                         ),
@@ -500,8 +648,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           ),
                           child: Text(
                             address.details!.comment!,
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: isSmall ? 12 : 14,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -526,10 +674,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildItemsSection() {
     final items = _orderDetails!.order.items;
     final canEdit = _orderDetails!.order.currentStatus.status == 1;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
+    final remaining = items
+        .where(
+            (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId))
+        .length;
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -537,8 +691,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 Text(
                   'Товары (${items.length})',
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: isSmall ? 16 : 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -569,6 +723,34 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (_hasIncompleteAmounts())
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orangeAccent),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Подтвердите количество для всех товаров (не может быть 0) перед изменением статуса. Осталось: $remaining',
+                        style: TextStyle(
+                          color: Colors.orange[800],
+                          fontSize: isSmall ? 12 : 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ...items.map((item) => _buildItemCard(item)),
           ],
         ),
@@ -577,9 +759,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Widget _buildItemCard(OrderItem item) {
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
+    final original = _originalAmounts[item.relationId];
+    final confirmed = _confirmedItems.contains(item.relationId);
+    final changed = original != null && original != item.amount;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isSmall ? 10 : 12),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(8),
@@ -594,45 +781,45 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
                     item.img!,
-                    width: 60,
-                    height: 60,
+                    width: isSmall ? 48 : 60,
+                    height: isSmall ? 48 : 60,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: 60,
-                        height: 60,
+                        width: isSmall ? 48 : 60,
+                        height: isSmall ? 48 : 60,
                         color: Colors.grey[300],
                         child: const Icon(Icons.image_not_supported),
                       );
                     },
                   ),
                 ),
-              const SizedBox(width: 12),
+              SizedBox(width: isSmall ? 8 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.name,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: isSmall ? 14 : 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       item.barcode ?? 'Штрихкод не указан',
-                      style: const TextStyle(
-                        fontSize: 10,
+                      style: TextStyle(
+                        fontSize: isSmall ? 9 : 10,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey,
+                        color: Colors.black,
                       ),
                     ),
                     Row(
                       children: [
                         Text(
                           '${item.amount} ${item.unit} × ${item.price} ₸',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: isSmall ? 12 : 14,
                             color: Colors.grey,
                           ),
                         ),
@@ -656,15 +843,72 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             tooltip:
                                 'Редактирование недоступно для данного статуса заказа',
                           ),
+                        if (confirmed)
+                          const Icon(Icons.check_circle,
+                              size: 20, color: Colors.green)
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.check_circle_outline,
+                                size: 20, color: Colors.orange),
+                            tooltip: 'Подтвердить количество',
+                            onPressed: () {
+                              setState(() {
+                                _updatedAmounts[item.relationId] = item.amount;
+                                _confirmedItems.add(item.relationId);
+                              });
+                            },
+                          ),
                       ],
                     ),
-                    Text(
-                      'Итого: ${item.totalCost.toStringAsFixed(2)} ₸',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (original != null)
+                          Text(
+                            'Исходное: ${original.toStringAsFixed(2)} ${item.unit}',
+                            style: TextStyle(
+                              fontSize: isSmall ? 10 : 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        Text(
+                          'Текущее: ${item.amount.toStringAsFixed(2)} ${item.unit}' +
+                              (changed ? ' (изменено)' : ''),
+                          style: TextStyle(
+                            fontSize: isSmall ? 11 : 13,
+                            fontWeight:
+                                changed ? FontWeight.w600 : FontWeight.w400,
+                            color:
+                                changed ? Colors.orange[800] : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          'Итого: ${item.totalCost.toStringAsFixed(2)} ₸',
+                          style: TextStyle(
+                            fontSize: isSmall ? 12 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange,
+                          ),
+                        ),
+                        if (!confirmed)
+                          Text(
+                            'Не подтверждено',
+                            style: TextStyle(
+                              fontSize: isSmall ? 10 : 11,
+                              color: Colors.red[400],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else if (changed)
+                          Text(
+                            'Подтверждено',
+                            style: TextStyle(
+                              fontSize: isSmall ? 10 : 11,
+                              color: Colors.green[600],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -672,16 +916,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
           if (item.options.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: isSmall ? 6 : 8),
+            Text(
               'Опции:',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: isSmall ? 12 : 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             ...item.options.map((option) => Padding(
                   padding: const EdgeInsets.only(left: 8, top: 4),
                   child: Text(
                     '• ${option.name} (+${option.selectedPrice} ₸)',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: isSmall ? 12 : 14,
+                      color: Colors.grey,
+                    ),
                   ),
                 )),
           ],
@@ -692,20 +942,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildFinancialSection() {
     final cost = _orderDetails!.order.costSummary;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Финансы',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Финансы',
+                  style: TextStyle(
+                    fontSize: isSmall ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(_orderDetails?.order.paymentType?.name ?? '')
+              ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 8 : 12),
             _buildInfoRow(
                 'Стоимость товаров', '${cost.itemsTotal.toStringAsFixed(2)} ₸'),
             if (cost.deliveryPrice > 0)
@@ -727,22 +985,54 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildStatusHistorySection() {
-    final history = _orderDetails!.order.statusHistory;
+  Widget _buildExtraSection() {
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'История статусов',
+            Text(
+              'Комментарии и дополнительные сведения',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmall ? 16 : 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 8 : 12),
+            Text(
+              _orderDetails!.order.extra ?? 'Нет дополнительных сведений',
+              style: TextStyle(
+                fontSize: isSmall ? 12 : 14,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusHistorySection() {
+    final history = _orderDetails!.order.statusHistory;
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(isSmall ? 12 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'История статусов',
+              style: TextStyle(
+                fontSize: isSmall ? 16 : 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: isSmall ? 8 : 12),
             ...history.map((status) => Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
@@ -753,22 +1043,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   child: Row(
                     children: [
                       _buildStatusIndicator(status.status),
-                      const SizedBox(width: 12),
+                      SizedBox(width: isSmall ? 8 : 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               status.statusName,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: isSmall ? 12 : 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
                               _formatDate(status.timestamp),
-                              style: const TextStyle(
-                                fontSize: 12,
+                              style: TextStyle(
+                                fontSize: isSmall ? 11 : 12,
                                 color: Colors.grey,
                               ),
                             ),
@@ -786,6 +1076,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildInfoRow(String label, String value,
       {bool isTotal = false, Color? valueColor}) {
+    final isSmall = MediaQuery.of(context).size.width < 380 ||
+        MediaQuery.of(context).size.height < 700;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -794,7 +1086,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
+              fontSize: isTotal ? (isSmall ? 14 : 16) : (isSmall ? 12 : 14),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               color: Colors.grey[600],
             ),
@@ -802,7 +1094,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text(
             value,
             style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
+              fontSize: isTotal ? (isSmall ? 14 : 16) : (isSmall ? 12 : 14),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
               color: isTotal ? Colors.orange : (valueColor ?? Colors.black),
             ),
@@ -814,6 +1106,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildActionButtons(BuildContext context) {
     final currentStatus = _orderDetails!.order.currentStatus.status;
+    final blocked = _hasIncompleteAmounts();
 
     return Column(
       children: [
@@ -823,7 +1116,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _updateOrderStatus(1),
+                  onPressed: blocked ? null : () => _updateOrderStatus(1),
                   icon: const Icon(Icons.check),
                   label: const Text('Принять заказ'),
                   style: ElevatedButton.styleFrom(
@@ -852,7 +1145,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _updateOrderStatus(2),
+              onPressed: blocked ? null : () => _updateOrderStatus(2),
               icon: const Icon(Icons.inventory),
               label: const Text('Начать сборку'),
               style: ElevatedButton.styleFrom(
@@ -866,7 +1159,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _updateOrderStatus(3),
+              onPressed: blocked ? null : () => _updateOrderStatus(3),
               icon: const Icon(Icons.local_shipping),
               label: const Text('Передать в доставку'),
               style: ElevatedButton.styleFrom(
@@ -880,7 +1173,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _updateOrderStatus(4),
+              onPressed: blocked ? null : () => _updateOrderStatus(4),
               icon: const Icon(Icons.done_all),
               label: const Text('Заказ доставлен'),
               style: ElevatedButton.styleFrom(
@@ -1089,6 +1382,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        setState(() {
+          _updatedAmounts[item.relationId] = newAmount;
+          _confirmedItems
+              .add(item.relationId); // автоподтверждение при изменении
+        });
         // Перезагружаем данные заказа
         _loadOrderDetails();
       } else {
@@ -1116,6 +1414,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // Обновление статуса заказа
   Future<void> _updateOrderStatus(int newStatus) async {
+    if (_hasIncompleteAmounts()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Сначала заполните количество для всех товаров'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     try {
       final success = await ApiService.updateOrderStatus(
         widget.orderId.toString(),
