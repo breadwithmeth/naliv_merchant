@@ -127,14 +127,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   void _findItemByBarcodeAndEdit(String barcode) {
     if (_orderDetails == null) return;
     final items = _orderDetails!.order.items;
+    // Сортируем: сначала те, где количество не указано или не подтверждено
+    final sortedItems = [
+      ...items.where(
+          (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId)),
+      ...items.where(
+          (it) => it.amount > 0 && _confirmedItems.contains(it.relationId)),
+    ];
     OrderItem? match;
     final scanned = barcode.trim();
     for (final it in items) {
-      final bc = (it.barcode ?? '').trim();
-      if (bc.isNotEmpty && bc == scanned) {
+      // barcode может приходить как CSV: "code1,code2,code3"
+      final raw = it.barcode ?? '';
+      final barcodes = raw
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      if (barcodes.contains(scanned)) {
         match = it;
         break;
       }
+      // на всякий случай оставим поиск по названию
       if (it.name.trim() == scanned) {
         match = it;
         break;
@@ -211,6 +226,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _buildScannerBar(),
           SizedBox(height: isSmall ? 8 : 12),
 
+          // Товары в заказе
+          _buildItemsSection(),
+          SizedBox(height: isSmall ? 16 : 24),
+
           // Статус заказа
           _buildStatusSection(),
           SizedBox(height: isSmall ? 16 : 24),
@@ -231,10 +250,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             SizedBox(height: isSmall ? 16 : 24),
           ],
 
-          // Товары в заказе
-          _buildItemsSection(),
-          SizedBox(height: isSmall ? 16 : 24),
-
           // История статусов
           _buildStatusHistorySection(),
           SizedBox(height: isSmall ? 20 : 32),
@@ -249,7 +264,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildScannerBar() {
     final size = MediaQuery.of(context).size;
     final isSmall = size.width < 380 || size.height < 700;
-    final narrow = size.width < 360; // очень узкий
     final canEdit = _orderDetails?.order.currentStatus.status == 1;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -284,138 +298,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ],
             ),
             SizedBox(height: isSmall ? 6 : 8),
-            if (!narrow)
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _startBarcodeScan,
-                    icon: const Icon(Icons.camera_alt),
-                    label: Text(
-                        _showLiveScanner ? 'Сканер открыт' : 'Сканировать'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      minimumSize: Size(isSmall ? 10 : 0, 40),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSmall ? 10 : 16,
-                        vertical: isSmall ? 10 : 12,
-                      ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _barcodeCtrl,
+                    focusNode: _barcodeFocusNode,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Штрихкод',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10, vertical: isSmall ? 6 : 8),
                     ),
+                    onTap: () =>
+                        SystemChannels.textInput.invokeMethod('TextInput.hide'),
+                    onSubmitted: (_) => _onManualBarcodeSubmit(),
                   ),
-                  SizedBox(width: isSmall ? 8 : 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _barcodeCtrl,
-                      focusNode: _barcodeFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'Штрихкод',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: isSmall ? 8 : 10),
-                      ),
-                      onTap: () => SystemChannels.textInput
-                          .invokeMethod('TextInput.hide'),
-                      onSubmitted: (_) => _onManualBarcodeSubmit(),
-                    ),
-                  ),
-                  SizedBox(width: isSmall ? 6 : 8),
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    tooltip: 'Найти товар',
+                ),
+                SizedBox(width: isSmall ? 4 : 6),
+                SizedBox(
+                  height: 40,
+                  child: ElevatedButton(
                     onPressed: _onManualBarcodeSubmit,
-                  ),
-                ],
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _startBarcodeScan,
-                    icon: const Icon(Icons.camera_alt),
-                    label: Text(
-                        _showLiveScanner ? 'Сканер открыт' : 'Сканировать'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: isSmall ? 10 : 12),
+                      backgroundColor: Colors.blueGrey[50],
+                      foregroundColor: Colors.black54,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: isSmall ? 8 : 10),
                     ),
+                    child: const Icon(Icons.search, size: 18),
                   ),
-                  SizedBox(height: isSmall ? 8 : 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _barcodeCtrl,
-                          focusNode: _barcodeFocusNode,
-                          decoration: InputDecoration(
-                            hintText: 'Штрихкод',
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: isSmall ? 8 : 10),
-                          ),
-                          onTap: () => SystemChannels.textInput
-                              .invokeMethod('TextInput.hide'),
-                          onSubmitted: (_) => _onManualBarcodeSubmit(),
-                        ),
-                      ),
-                      SizedBox(width: isSmall ? 6 : 8),
-                      IconButton(
-                        icon: const Icon(Icons.search),
-                        tooltip: 'Найти',
-                        onPressed: _onManualBarcodeSubmit,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            if (_showLiveScanner)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                height: isSmall ? 160 : 220,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange, width: 2),
-                  color: Colors.black,
                 ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: MobileScanner(
-                        controller: _scannerController,
-                        onDetect: (capture) {
-                          final barcodes = capture.barcodes;
-                          if (barcodes.isEmpty) return;
-                          final code = barcodes.first.rawValue;
-                          if (code == null) return;
-                          if (!_showLiveScanner) return; // уже закрываем
-                          setState(() {
-                            _barcodeCtrl.text = code;
-                            _showLiveScanner = false; // спрячем после скана
-                          });
-                          _findItemByBarcodeAndEdit(code);
-                          // очищаем для следующего ввода / скана
-                          _barcodeCtrl.clear();
-                        },
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () =>
-                            setState(() => _showLiveScanner = false),
-                        tooltip: 'Закрыть сканер',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
@@ -680,6 +597,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         .where(
             (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId))
         .length;
+    // Сортируем: сначала те, где количество не указано или не подтверждено
+    final sortedItems = [
+      ...items.where(
+          (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId)),
+      ...items.where(
+          (it) => it.amount > 0 && _confirmedItems.contains(it.relationId)),
+    ];
 
     return Card(
       child: Padding(
@@ -689,35 +613,44 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           children: [
             Row(
               children: [
-                Text(
-                  'Товары (${items.length})',
-                  style: TextStyle(
-                    fontSize: isSmall ? 16 : 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Товары (${items.length})',
+                    style: TextStyle(
+                      fontSize: isSmall ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
                 if (!canEdit)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.lock, size: 16, color: Colors.grey),
-                        SizedBox(width: 4),
-                        Text(
-                          'Редактирование недоступно',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.lock, size: 14, color: Colors.grey),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Редакт. недоступно',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -751,7 +684,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ],
                 ),
               ),
-            ...items.map((item) => _buildItemCard(item)),
+            ...sortedItems.map((item) => _buildItemCard(item)),
           ],
         ),
       ),
@@ -816,40 +749,60 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                     Row(
                       children: [
-                        Text(
-                          '${item.amount} ${item.unit} × ${item.price} ₸',
-                          style: TextStyle(
-                            fontSize: isSmall ? 12 : 14,
-                            color: Colors.grey,
+                        Expanded(
+                          child: Text(
+                            '${item.amount} ${item.unit} × ${item.price} ₸',
+                            style: TextStyle(
+                              fontSize: isSmall ? 12 : 14,
+                              color: Colors.grey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 4),
                         IconButton(
-                          icon: const Icon(Icons.qr_code_scanner, size: 20),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
+                          icon: const Icon(Icons.qr_code_scanner, size: 18),
                           tooltip: 'Сканировать для этого товара',
                           onPressed: _startBarcodeScan,
                         ),
                         if (_orderDetails!.order.currentStatus.status == 1)
                           IconButton(
-                            icon: const Icon(Icons.edit, size: 20),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 32, minHeight: 32),
+                            icon: const Icon(Icons.edit, size: 18),
                             onPressed: () => _showEditAmountDialog(item),
                             tooltip: 'Изменить количество',
                           )
                         else
                           IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 32, minHeight: 32),
                             icon: const Icon(Icons.edit,
-                                size: 20, color: Colors.grey),
+                                size: 18, color: Colors.grey),
                             onPressed: null,
                             tooltip:
                                 'Редактирование недоступно для данного статуса заказа',
                           ),
                         if (confirmed)
                           const Icon(Icons.check_circle,
-                              size: 20, color: Colors.green)
+                              size: 18, color: Colors.green)
                         else
                           IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 32, minHeight: 32),
                             icon: const Icon(Icons.check_circle_outline,
-                                size: 20, color: Colors.orange),
+                                size: 18, color: Colors.orange),
                             tooltip: 'Подтвердить количество',
                             onPressed: () {
                               setState(() {
@@ -1311,8 +1264,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.none,
               decoration: InputDecoration(
                 labelText: 'Новое количество (${item.unit})',
                 border: const OutlineInputBorder(),
