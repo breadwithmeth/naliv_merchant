@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'courier_locations_screen.dart';
 import 'discount_help_screen.dart';
+import 'order_tips_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -183,6 +184,233 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return false;
   }
 
+  bool _isErrorStatus(int status) {
+    return status == 6 || status == 67 || status == 68;
+  }
+
+  bool _isOrderBlockedByStatus(int status) {
+    return status == 0 || status == 66 || _isErrorStatus(status);
+  }
+
+  List<int> _statusFlow() {
+    return const [
+      0,
+      1,
+      11,
+      12,
+      2,
+      21,
+      3,
+      31,
+      4,
+      5,
+      50,
+      51,
+      52,
+      6,
+      60,
+      61,
+      66,
+      67,
+      68,
+      7,
+      71,
+    ];
+  }
+
+  Color _statusColor(int status) {
+    switch (status) {
+      case 0:
+        return Colors.grey;
+      case 1:
+        return Colors.blue;
+      case 11:
+        return Colors.indigo;
+      case 12:
+        return Colors.orange;
+      case 2:
+        return Colors.orange;
+      case 21:
+        return Colors.deepOrange;
+      case 3:
+        return Colors.purple;
+      case 31:
+        return Colors.teal;
+      case 4:
+        return Colors.green;
+      case 5:
+      case 50:
+      case 51:
+      case 52:
+        return Colors.red;
+      case 6:
+      case 68:
+        return Colors.deepPurple;
+      case 60:
+      case 61:
+        return Colors.amber;
+      case 66:
+      case 67:
+        return Colors.redAccent;
+      case 7:
+      case 71:
+        return Colors.blueGrey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildOrderSummaryHeader() {
+    final currentStatus = _orderDetails!.order.currentStatus;
+    final total = _orderDetails!.order.costSummary.totalSum;
+    final itemsCount = _orderDetails!.order.items.length;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Заказ #${widget.orderId}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _statusColor(currentStatus.status).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    currentStatus.statusName,
+                    style: TextStyle(
+                      color: _statusColor(currentStatus.status),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildQuickChip(
+                    Icons.shopping_bag_outlined, '$itemsCount тов.'),
+                _buildQuickChip(
+                    Icons.payments_outlined, '${total.toStringAsFixed(0)} ₸'),
+                _buildQuickChip(
+                    Icons.schedule, _formatDate(currentStatus.timestamp)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade700),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey.shade800,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusProgress(int currentStatus) {
+    final flow = _statusFlow();
+    final currentIndex = flow.indexOf(currentStatus);
+
+    if (currentIndex < 0) {
+      return const SizedBox.shrink();
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(flow.length, (index) {
+          final status = flow[index];
+          final isDone = index < currentIndex;
+          final isCurrent = index == currentIndex;
+          final color =
+              isCurrent || isDone ? _statusColor(status) : Colors.grey.shade300;
+
+          return Row(
+            children: [
+              Column(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isDone ? Icons.check : Icons.circle,
+                      size: isDone ? 16 : 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      OrderStatusCatalog.resolve(status),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isCurrent ? color : Colors.grey.shade600,
+                        fontWeight:
+                            isCurrent ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (index != flow.length - 1)
+                Container(
+                  width: 20,
+                  height: 2,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  color: index < currentIndex
+                      ? _statusColor(flow[index + 1])
+                      : Colors.grey.shade300,
+                ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     final size = MediaQuery.of(context).size;
     final isSmall =
@@ -232,6 +460,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildOrderSummaryHeader(),
+          SizedBox(height: isSmall ? 8 : 12),
+
           _buildScannerBar(),
           SizedBox(height: isSmall ? 8 : 12),
 
@@ -239,6 +470,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _buildItemsSection(),
           const SizedBox(height: 12),
           // Кнопка помощи со скидками (под списком товаров)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OrderTipsScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.lightbulb_outline, color: Colors.orange),
+              label: const Text(
+                'Подсказки по обработке заказа',
+                style: TextStyle(color: Colors.orange),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.orange),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -323,8 +577,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildScannerBar() {
     final size = MediaQuery.of(context).size;
     final isSmall = size.width < 380 || size.height < 700;
-    final canEdit = _orderDetails?.order.currentStatus.status == 1 ||
-        _orderDetails?.order.currentStatus.status == 11;
+    final status = _orderDetails?.order.currentStatus.status;
+    final canEdit = status != null &&
+        !_isOrderBlockedByStatus(status) &&
+        (status == 1 || status == 11);
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -444,6 +700,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            _buildStatusProgress(status.status),
           ],
         ),
       ),
@@ -490,6 +748,33 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 4:
         color = Colors.green;
         icon = Icons.done_all;
+        break;
+      case 5:
+      case 50:
+      case 51:
+      case 52:
+        color = Colors.red;
+        icon = Icons.cancel;
+        break;
+      case 6:
+      case 68:
+        color = Colors.deepPurple;
+        icon = Icons.error_outline;
+        break;
+      case 60:
+      case 61:
+        color = Colors.amber;
+        icon = Icons.payments;
+        break;
+      case 66:
+      case 67:
+        color = Colors.redAccent;
+        icon = Icons.money_off;
+        break;
+      case 7:
+      case 71:
+        color = Colors.blueGrey;
+        icon = Icons.replay;
         break;
       default:
         color = Colors.grey;
@@ -666,8 +951,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildItemsSection() {
     final items = _orderDetails!.order.items;
-    final canEdit = _orderDetails!.order.currentStatus.status == 1 ||
-        _orderDetails!.order.currentStatus.status == 11;
+    final status = _orderDetails!.order.currentStatus.status;
+    final canEdit =
+        !_isOrderBlockedByStatus(status) && (status == 1 || status == 11);
     final isSmall = MediaQuery.of(context).size.width < 380 ||
         MediaQuery.of(context).size.height < 700;
     final remaining = items.where((it) => it.amount <= 0).length;
@@ -841,8 +1127,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           tooltip: 'Сканировать для этого товара',
                           onPressed: _startBarcodeScan,
                         ),
-                        if (_orderDetails!.order.currentStatus.status == 1 ||
-                            _orderDetails!.order.currentStatus.status == 11)
+                        if (!_isOrderBlockedByStatus(
+                                _orderDetails!.order.currentStatus.status) &&
+                            (_orderDetails!.order.currentStatus.status == 1 ||
+                                _orderDetails!.order.currentStatus.status ==
+                                    11))
                           IconButton(
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
@@ -1113,16 +1402,46 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildActionButtons(BuildContext context) {
     final currentStatus = _orderDetails!.order.currentStatus.status;
     final blocked = _hasIncompleteAmounts();
+    final isLocked = _isOrderBlockedByStatus(currentStatus);
 
     return Column(
       children: [
+        if (isLocked)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[200]!),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.lock_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Заказ заблокирован для обработки в текущем статусе',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         // Кнопки для изменения статуса в зависимости от текущего статуса
         if (currentStatus == 0) // Новый заказ (авто -> Просмотрен)
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: blocked ? null : () => _updateOrderStatus(1),
+                  onPressed: (blocked || isLocked)
+                      ? null
+                      : () => _updateOrderStatus(1),
                   icon: const Icon(Icons.check),
                   label: const Text('Принять заказ'),
                   style: ElevatedButton.styleFrom(
@@ -1152,7 +1471,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(12),
+              onPressed:
+                  (blocked || isLocked) ? null : () => _updateOrderStatus(12),
               icon: const Icon(Icons.inventory),
               label: const Text('Начать сборку'),
               style: ElevatedButton.styleFrom(
@@ -1166,7 +1486,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(2),
+              onPressed:
+                  (blocked || isLocked) ? null : () => _updateOrderStatus(2),
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Готов к выдаче'),
               style: ElevatedButton.styleFrom(
@@ -1180,7 +1501,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(21),
+              onPressed:
+                  (blocked || isLocked) ? null : () => _updateOrderStatus(21),
               icon: const Icon(Icons.local_shipping),
               label: const Text('Передать курьеру'),
               style: ElevatedButton.styleFrom(
@@ -1300,6 +1622,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   void _showEditAmountDialog(OrderItem item) {
+    if (_isOrderBlockedByStatus(_orderDetails!.order.currentStatus.status)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Заказ заблокирован в текущем статусе'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Проверяем статус заказа
     if (_orderDetails!.order.currentStatus.status != 1 &&
         _orderDetails!.order.currentStatus.status != 11) {
@@ -1445,6 +1777,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // Обновление статуса заказа
   Future<void> _updateOrderStatus(int newStatus) async {
+    if (_isOrderBlockedByStatus(_orderDetails!.order.currentStatus.status)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Заказ заблокирован для смены статуса'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_hasIncompleteAmounts()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

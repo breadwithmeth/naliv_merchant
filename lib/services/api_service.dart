@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import '../utils/token_manager.dart';
 
 class ApiService {
-  //static const String baseUrl = 'https://njt25.naliv.kz';
-  static const String baseUrl = 'http://localhost:3009';
+  static const String baseUrl = 'https://njt25.naliv.kz';
+  //static const String baseUrl = 'http://localhost:3009';
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await TokenManager.getToken();
@@ -403,6 +403,8 @@ class OrderStatusCatalog {
     60: 'Ожидает оплаты',
     61: 'Оплата в обработке',
     66: 'Не оплачен',
+    67: 'Платеж отклонен',
+    68: 'Системная ошибка оплаты',
     7: 'Возврат начат',
     71: 'Возврат завершен',
   };

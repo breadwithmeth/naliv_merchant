@@ -16,6 +16,7 @@ class CourierLocationsScreen extends StatefulWidget {
 }
 
 class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
+  final MapController _mapController = MapController();
   bool _loading = false;
   String? _error;
   List<CourierLocationPoint> _locations = [];
@@ -77,6 +78,8 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
         _error = 'Список локаций пуст';
       }
     });
+
+    _fitMapToAllPoints();
   }
 
   String _fmtDateTime(DateTime dateTime) {
@@ -126,6 +129,32 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
         child: _buildBody(),
       ),
     );
+  }
+
+  void _fitMapToAllPoints() {
+    final points = <LatLng>[
+      ..._locations.map((e) => LatLng(e.lat, e.lon)),
+      if (_deliveryPoint != null) _deliveryPoint!,
+      if (_businessPoint != null) _businessPoint!,
+    ];
+
+    if (points.isEmpty) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (points.length == 1) {
+        _mapController.move(points.first, 15);
+        return;
+      }
+
+      final bounds = LatLngBounds.fromPoints(points);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(40),
+        ),
+      );
+    });
   }
 
   Widget _buildBody() {
@@ -277,56 +306,124 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: FlutterMap(
-          options: MapOptions(
-            initialCenter: LatLng(first.latitude, first.longitude),
-            initialZoom: 15,
-          ),
+        child: Stack(
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'naliv.merchant',
-            ),
-            MarkerLayer(
-              markers: [
-                ..._locations.map(
-                  (loc) => Marker(
-                    point: LatLng(loc.lat, loc.lon),
-                    width: 48,
-                    height: 48,
-                    child: const Icon(
-                      Icons.location_pin,
-                      color: Colors.red,
-                      size: 42,
-                    ),
-                  ),
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: LatLng(first.latitude, first.longitude),
+                initialZoom: 15,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'naliv.merchant',
                 ),
-                if (_deliveryPoint != null)
-                  Marker(
-                    point: _deliveryPoint!,
-                    width: 44,
-                    height: 44,
-                    child: const Icon(
-                      Icons.home,
-                      color: Colors.blue,
-                      size: 36,
+                MarkerLayer(
+                  markers: [
+                    ..._locations.map(
+                      (loc) => Marker(
+                        point: LatLng(loc.lat, loc.lon),
+                        width: 48,
+                        height: 48,
+                        child: const Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 42,
+                        ),
+                      ),
                     ),
-                  ),
-                if (_businessPoint != null)
-                  Marker(
-                    point: _businessPoint!,
-                    width: 44,
-                    height: 44,
-                    child: const Icon(
-                      Icons.store,
-                      color: Colors.orange,
-                      size: 34,
-                    ),
-                  ),
+                    if (_deliveryPoint != null)
+                      Marker(
+                        point: _deliveryPoint!,
+                        width: 44,
+                        height: 44,
+                        child: const Icon(
+                          Icons.home,
+                          color: Colors.blue,
+                          size: 36,
+                        ),
+                      ),
+                    if (_businessPoint != null)
+                      Marker(
+                        point: _businessPoint!,
+                        width: 44,
+                        height: 44,
+                        child: const Icon(
+                          Icons.store,
+                          color: Colors.orange,
+                          size: 34,
+                        ),
+                      ),
+                  ],
+                ),
               ],
+            ),
+            Positioned(
+              right: 10,
+              top: 10,
+              child: Material(
+                color: Colors.white,
+                elevation: 1,
+                borderRadius: BorderRadius.circular(20),
+                child: IconButton(
+                  tooltip: 'Показать все точки',
+                  icon: const Icon(Icons.center_focus_strong),
+                  onPressed: _fitMapToAllPoints,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 10,
+              bottom: 10,
+              child: _buildMapLegend(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMapLegend() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _LegendRow(color: Colors.red, label: 'Курьер'),
+          _LegendRow(color: Colors.blue, label: 'Доставка'),
+          _LegendRow(color: Colors.orange, label: 'Бизнес'),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendRow({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }
