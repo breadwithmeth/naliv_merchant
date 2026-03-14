@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import '../utils/token_manager.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://njt25.naliv.kz';
-  // static const String baseUrl = 'http://localhost:3000';
+  //static const String baseUrl = 'https://njt25.naliv.kz';
+  static const String baseUrl = 'http://localhost:3009';
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await TokenManager.getToken();
@@ -73,6 +73,52 @@ class ApiService {
 
   /// Обновление статуса заказа
   static Future<bool> updateOrderStatus(String orderId, int status) async {
+    final transitionPath = _statusTransitionPath(status);
+    if (transitionPath == null) {
+      // Для обратной совместимости: старый универсальный эндпоинт.
+      return _updateOrderStatusLegacy(orderId, status);
+    }
+
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse(
+          '$baseUrl/api/businesses/orders/$orderId/status/$transitionPath');
+
+      final response = await http.patch(uri, headers: headers);
+
+      print('Response status: ${response.statusCode}');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error updating order status: $e');
+      return false;
+    }
+  }
+
+  /// Автоматическая отметка "Просмотрен" после статуса "Принят".
+  static Future<bool> markOrderSeen(String orderId) async {
+    return updateOrderStatus(orderId, 11);
+  }
+
+  static String? _statusTransitionPath(int status) {
+    switch (status) {
+      case 1:
+        return 'accepted';
+      case 11:
+        return 'seen';
+      case 12:
+        return 'collecting';
+      case 2:
+        return 'ready';
+      case 21:
+        return 'handed-to-courier';
+      default:
+        return null;
+    }
+  }
+
+  static Future<bool> _updateOrderStatusLegacy(
+      String orderId, int status) async {
     try {
       final headers = await _getHeaders();
       final uri = Uri.parse('$baseUrl/api/business/orders/$orderId/status');
@@ -149,6 +195,220 @@ class ApiService {
       print('Error fetching courier reports: $e');
       return null;
     }
+  }
+
+  /// Локации курьеров
+  static Future<CourierLocationsResult> getCourierLocations(
+      {String? orderId}) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/api/businesses/couriers/locations')
+          .replace(queryParameters: {
+        if (orderId != null && orderId.isNotEmpty) 'order_id': orderId,
+      });
+      final response = await http.get(uri, headers: headers);
+      print(response.body);
+
+      final Map<String, dynamic>? payload =
+          response.body.isNotEmpty ? json.decode(response.body) : null;
+
+      if (payload == null) {
+        return CourierLocationsResult(
+          success: false,
+          statusCode: response.statusCode,
+          errorMessage: 'Пустой ответ сервера',
+          locations: const [],
+        );
+      }
+
+      // Сервер может вернуть success=false со statusCode=409, если курьер не назначен.
+      if (payload['success'] == false) {
+        final error = payload['error'];
+        final errorMessage = error is Map
+            ? (error['message']?.toString() ?? payload['message']?.toString())
+            : payload['message']?.toString();
+        final int? errorStatusCode = error is Map
+            ? _toIntOrNull(error['statusCode'])
+            : _toIntOrNull(payload['statusCode']);
+
+        return CourierLocationsResult(
+          success: false,
+          statusCode: errorStatusCode ?? response.statusCode,
+          errorMessage: errorMessage ?? 'Не удалось получить локации курьеров',
+          locations: const [],
+          raw: payload,
+        );
+      }
+
+      final dynamic data = payload['data'] ?? payload;
+      final locations = _extractCourierLocations(data);
+
+      return CourierLocationsResult(
+        success: true,
+        statusCode: response.statusCode,
+        message: payload['message']?.toString(),
+        locations: locations,
+        raw: payload,
+      );
+    } catch (e) {
+      print('Error fetching courier locations: $e');
+      return CourierLocationsResult(
+        success: false,
+        errorMessage: 'Ошибка загрузки: $e',
+        locations: const [],
+      );
+    }
+  }
+
+  static int? _toIntOrNull(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  static double? _toDoubleOrNull(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  static List<CourierLocationPoint> _extractCourierLocations(dynamic data) {
+    final result = <CourierLocationPoint>[];
+
+    // Новый контракт: data.couriers[].location.{lat,lon}
+    if (data is Map && data['couriers'] is List) {
+      for (final courier in data['couriers']) {
+        if (courier is! Map) continue;
+
+        final location = courier['location'];
+        final lat = _toDoubleOrNull(
+            location is Map ? location['lat'] : courier['latitude']);
+        final lon = _toDoubleOrNull(
+            location is Map ? location['lon'] : courier['longitude']);
+
+        if (lat == null || lon == null) continue;
+
+        result.add(
+          CourierLocationPoint(
+            courierId: _toIntOrNull(courier['courier_id'] ?? courier['id']),
+            courierName: courier['name']?.toString(),
+            courierLogin: courier['login']?.toString(),
+            lat: lat,
+            lon: lon,
+            updatedAt: location is Map
+                ? location['updated_at']?.toString()
+                : courier['updated_at']?.toString(),
+            raw: Map<String, dynamic>.from(courier),
+          ),
+        );
+      }
+      if (result.isNotEmpty) return result;
+    }
+
+    // Обратная совместимость со старыми/плоскими ответами.
+    final candidates = <dynamic>[];
+    if (data is List) {
+      candidates.addAll(data);
+    } else if (data is Map) {
+      if (data['locations'] is List) candidates.addAll(data['locations']);
+      if (data['items'] is List) candidates.addAll(data['items']);
+      if (data['data'] is List) candidates.addAll(data['data']);
+      candidates.add(data);
+    }
+
+    for (final item in candidates) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      final lat = _toDoubleOrNull(map['latitude'] ?? map['lat']);
+      final lon = _toDoubleOrNull(map['longitude'] ?? map['lon'] ?? map['lng']);
+      if (lat == null || lon == null) continue;
+
+      final courier = map['courier'];
+
+      result.add(
+        CourierLocationPoint(
+          courierId: _toIntOrNull(map['courier_id'] ??
+              map['id'] ??
+              (courier is Map ? courier['id'] : null)),
+          courierName: courier is Map
+              ? courier['name']?.toString()
+              : map['courier_name']?.toString(),
+          courierLogin: courier is Map ? courier['login']?.toString() : null,
+          lat: lat,
+          lon: lon,
+          updatedAt: map['updated_at']?.toString(),
+          raw: map,
+        ),
+      );
+    }
+
+    return result;
+  }
+}
+
+class CourierLocationsResult {
+  final bool success;
+  final int? statusCode;
+  final String? message;
+  final String? errorMessage;
+  final List<CourierLocationPoint> locations;
+  final Map<String, dynamic>? raw;
+
+  const CourierLocationsResult({
+    required this.success,
+    required this.locations,
+    this.statusCode,
+    this.message,
+    this.errorMessage,
+    this.raw,
+  });
+
+  bool get isCourierNotAssigned => statusCode == 409;
+}
+
+class CourierLocationPoint {
+  final int? courierId;
+  final String? courierName;
+  final String? courierLogin;
+  final double lat;
+  final double lon;
+  final String? updatedAt;
+  final Map<String, dynamic> raw;
+
+  const CourierLocationPoint({
+    required this.lat,
+    required this.lon,
+    required this.raw,
+    this.courierId,
+    this.courierName,
+    this.courierLogin,
+    this.updatedAt,
+  });
+}
+
+class OrderStatusCatalog {
+  static const Map<int, String> names = {
+    0: 'Новый заказ',
+    1: 'Принят магазином',
+    11: 'Просмотрен',
+    12: 'Собирается',
+    2: 'Готов к выдаче',
+    21: 'Передан курьеру',
+    3: 'Доставляется',
+    31: 'Курьер рядом',
+    4: 'Доставлен',
+    5: 'Отменен',
+    50: 'Отменен пользователем',
+    51: 'Отменен магазином',
+    52: 'Отменен: нет в наличии',
+    6: 'Ошибка платежа',
+    60: 'Ожидает оплаты',
+    61: 'Оплата в обработке',
+    66: 'Не оплачен',
+    7: 'Возврат начат',
+    71: 'Возврат завершен',
+  };
+
+  static String resolve(int status) {
+    return names[status] ?? 'Статус не указан';
   }
 }
 
@@ -330,9 +590,11 @@ class OrderStatus {
   });
 
   factory OrderStatus.fromJson(Map<String, dynamic> json) {
+    final status = json['status'] ?? 0;
     return OrderStatus(
-      status: json['status'] ?? 0,
-      statusName: json['status_name'] ?? 'Статус не указан',
+      status: status,
+      statusName:
+          json['status_name']?.toString() ?? OrderStatusCatalog.resolve(status),
       timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
       isCanceled: json['isCanceled'] ?? 0,
     );
@@ -470,10 +732,12 @@ class StatusHistory {
   });
 
   factory StatusHistory.fromJson(Map<String, dynamic> json) {
+    final status = json['status'] ?? 0;
     return StatusHistory(
       statusId: json['status_id'] ?? 0,
-      status: json['status'] ?? 0,
-      statusName: json['status_name'] ?? 'Неизвестно',
+      status: status,
+      statusName:
+          json['status_name']?.toString() ?? OrderStatusCatalog.resolve(status),
       timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
       isCanceled: json['isCanceled'] ?? 0,
     );
@@ -594,16 +858,24 @@ class CostSummary {
 class Business {
   final int businessId;
   final String name;
+  final String? address;
+  final Coordinates? coordinates;
 
   Business({
     required this.businessId,
     required this.name,
+    this.address,
+    this.coordinates,
   });
 
   factory Business.fromJson(Map<String, dynamic> json) {
     return Business(
       businessId: json['business_id'] ?? 0,
       name: json['name'] ?? 'Неизвестно',
+      address: json['address']?.toString(),
+      coordinates: json['coordinates'] is Map
+          ? Coordinates.fromJson(Map<String, dynamic>.from(json['coordinates']))
+          : null,
     );
   }
 }

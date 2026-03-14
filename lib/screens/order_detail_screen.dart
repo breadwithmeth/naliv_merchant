@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'courier_locations_screen.dart';
+import 'discount_help_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -28,6 +30,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   final Map<int, double> _updatedAmounts =
       {}; // relationId -> обновленное количество
   final Set<int> _confirmedItems = {}; // relationId подтвержденных
+  bool _autoSeenAttempted = false;
 
   @override
   void initState() {
@@ -56,8 +59,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _error = null;
       });
 
-      final details =
+      OrderDetails? details =
           await ApiService.getOrderDetails(widget.orderId.toString());
+
+      // Принятый заказ автоматически помечаем как "Просмотрен" при первом открытии.
+      if (details != null &&
+          details.order.currentStatus.status == 1 &&
+          !_autoSeenAttempted) {
+        _autoSeenAttempted = true;
+        final seenMarked =
+            await ApiService.markOrderSeen(widget.orderId.toString());
+        if (seenMarked) {
+          details =
+              await ApiService.getOrderDetails(widget.orderId.toString()) ??
+                  details;
+        }
+      }
 
       setState(() {
         _orderDetails = details;
@@ -127,13 +144,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   void _findItemByBarcodeAndEdit(String barcode) {
     if (_orderDetails == null) return;
     final items = _orderDetails!.order.items;
-    // Сортируем: сначала те, где количество не указано или не подтверждено
-    final sortedItems = [
-      ...items.where(
-          (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId)),
-      ...items.where(
-          (it) => it.amount > 0 && _confirmedItems.contains(it.relationId)),
-    ];
     OrderItem? match;
     final scanned = barcode.trim();
     for (final it in items) {
@@ -169,7 +179,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (items == null || items.isEmpty) return true;
     for (final it in items) {
       if (it.amount <= 0) return true;
-      if (!_confirmedItems.contains(it.relationId)) return true;
     }
     return false;
   }
@@ -228,6 +237,56 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
           // Товары в заказе
           _buildItemsSection(),
+          const SizedBox(height: 12),
+          // Кнопка помощи со скидками (под списком товаров)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        DiscountHelpScreen(orderId: widget.orderId.toString()),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.help_outline, color: Colors.orange),
+              label: const Text(
+                'Помогите, у меня не работают скидки!',
+                style: TextStyle(color: Colors.orange),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.orange),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          SizedBox(height: isSmall ? 16 : 24),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CourierLocationsScreen(
+                      orderId: widget.orderId.toString(),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.my_location, color: Colors.orange),
+              label: const Text(
+                'Геолокация курьера',
+                style: TextStyle(color: Colors.orange),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.orange),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
           SizedBox(height: isSmall ? 16 : 24),
 
           // Статус заказа
@@ -264,7 +323,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildScannerBar() {
     final size = MediaQuery.of(context).size;
     final isSmall = size.width < 380 || size.height < 700;
-    final canEdit = _orderDetails?.order.currentStatus.status == 1;
+    final canEdit = _orderDetails?.order.currentStatus.status == 1 ||
+        _orderDetails?.order.currentStatus.status == 11;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -403,13 +463,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         color = Colors.blue;
         icon = Icons.schedule;
         break;
+      case 11:
+        color = Colors.indigo;
+        icon = Icons.visibility;
+        break;
+      case 12:
+        color = Colors.orange;
+        icon = Icons.inventory_2;
+        break;
       case 2:
         color = Colors.orange;
         icon = Icons.inventory;
         break;
+      case 21:
+        color = Colors.deepOrange;
+        icon = Icons.local_shipping;
+        break;
       case 3:
         color = Colors.purple;
         icon = Icons.local_shipping;
+        break;
+      case 31:
+        color = Colors.teal;
+        icon = Icons.near_me;
         break;
       case 4:
         color = Colors.green;
@@ -590,19 +666,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildItemsSection() {
     final items = _orderDetails!.order.items;
-    final canEdit = _orderDetails!.order.currentStatus.status == 1;
+    final canEdit = _orderDetails!.order.currentStatus.status == 1 ||
+        _orderDetails!.order.currentStatus.status == 11;
     final isSmall = MediaQuery.of(context).size.width < 380 ||
         MediaQuery.of(context).size.height < 700;
-    final remaining = items
-        .where(
-            (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId))
-        .length;
-    // Сортируем: сначала те, где количество не указано или не подтверждено
+    final remaining = items.where((it) => it.amount <= 0).length;
     final sortedItems = [
-      ...items.where(
-          (it) => it.amount <= 0 || !_confirmedItems.contains(it.relationId)),
-      ...items.where(
-          (it) => it.amount > 0 && _confirmedItems.contains(it.relationId)),
+      ...items.where((it) => it.amount <= 0),
+      ...items.where((it) => it.amount > 0),
     ];
 
     return Card(
@@ -673,7 +744,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Подтвердите количество для всех товаров (не может быть 0) перед изменением статуса. Осталось: $remaining',
+                        'Укажите количество для всех товаров (не может быть 0) перед изменением статуса. Осталось: $remaining',
                         style: TextStyle(
                           color: Colors.orange[800],
                           fontSize: isSmall ? 12 : 13,
@@ -770,7 +841,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           tooltip: 'Сканировать для этого товара',
                           onPressed: _startBarcodeScan,
                         ),
-                        if (_orderDetails!.order.currentStatus.status == 1)
+                        if (_orderDetails!.order.currentStatus.status == 1 ||
+                            _orderDetails!.order.currentStatus.status == 11)
                           IconButton(
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
@@ -791,25 +863,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             onPressed: null,
                             tooltip:
                                 'Редактирование недоступно для данного статуса заказа',
-                          ),
-                        if (confirmed)
-                          const Icon(Icons.check_circle,
-                              size: 18, color: Colors.green)
-                        else
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 32, minHeight: 32),
-                            icon: const Icon(Icons.check_circle_outline,
-                                size: 18, color: Colors.orange),
-                            tooltip: 'Подтвердить количество',
-                            onPressed: () {
-                              setState(() {
-                                _updatedAmounts[item.relationId] = item.amount;
-                                _confirmedItems.add(item.relationId);
-                              });
-                            },
                           ),
                       ],
                     ),
@@ -1064,7 +1117,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Column(
       children: [
         // Кнопки для изменения статуса в зависимости от текущего статуса
-        if (currentStatus == 0) // Новый заказ
+        if (currentStatus == 0) // Новый заказ (авто -> Просмотрен)
           Row(
             children: [
               Expanded(
@@ -1094,11 +1147,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ],
           )
-        else if (currentStatus == 1) // Принят магазином
+        else if (currentStatus == 1 ||
+            currentStatus == 11) // Принят / Просмотрен
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(2),
+              onPressed: blocked ? null : () => _updateOrderStatus(12),
               icon: const Icon(Icons.inventory),
               label: const Text('Начать сборку'),
               style: ElevatedButton.styleFrom(
@@ -1108,13 +1162,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ),
           )
-        else if (currentStatus == 2) // Сборка
+        else if (currentStatus == 12) // Сборка
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(3),
-              icon: const Icon(Icons.local_shipping),
-              label: const Text('Передать в доставку'),
+              onPressed: blocked ? null : () => _updateOrderStatus(2),
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Готов к выдаче'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
@@ -1122,18 +1176,42 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ),
           )
-        else if (currentStatus == 3) // Готовится/Доставляется
+        else if (currentStatus == 2) // Готов
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: blocked ? null : () => _updateOrderStatus(4),
-              icon: const Icon(Icons.done_all),
-              label: const Text('Заказ доставлен'),
+              onPressed: blocked ? null : () => _updateOrderStatus(21),
+              icon: const Icon(Icons.local_shipping),
+              label: const Text('Передать курьеру'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
+                backgroundColor: Colors.deepOrange,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
+            ),
+          )
+        else if (currentStatus == 21)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.deepOrange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.deepOrange[200]!),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.local_shipping, color: Colors.deepOrange),
+                SizedBox(width: 8),
+                Text(
+                  'Заказ передан курьеру',
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           )
         else if (currentStatus == 4) // Доставлен
@@ -1223,7 +1301,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   void _showEditAmountDialog(OrderItem item) {
     // Проверяем статус заказа
-    if (_orderDetails!.order.currentStatus.status != 1) {
+    if (_orderDetails!.order.currentStatus.status != 1 &&
+        _orderDetails!.order.currentStatus.status != 11) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(

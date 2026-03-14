@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'discount_help_screen.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final Order order;
@@ -438,6 +439,30 @@ class OrderDetailsScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      DiscountHelpScreen(orderId: order.orderId.toString()),
+                ),
+              );
+            },
+            icon: const Icon(Icons.help_outline, color: Colors.orange),
+            label: const Text(
+              'Помогите, у меня не работают скидки!',
+              style: TextStyle(color: Colors.orange),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.orange),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),

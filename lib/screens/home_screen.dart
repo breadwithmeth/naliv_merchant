@@ -6,6 +6,7 @@ import '../widgets/order_card.dart';
 import '../screens/order_detail_screen.dart';
 import 'login_screen.dart';
 import 'courier_reports_screen.dart';
+import 'courier_locations_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -125,6 +126,17 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.location_on_outlined),
+            tooltip: 'Локации курьеров',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CourierLocationsScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.insert_chart_outlined),
             tooltip: 'Отчет курьеры',
