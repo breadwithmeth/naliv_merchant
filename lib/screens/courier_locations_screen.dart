@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 
@@ -17,6 +20,8 @@ class CourierLocationsScreen extends StatefulWidget {
 
 class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
   final MapController _mapController = MapController();
+  Timer? _pollingTimer;
+  bool _isRequestInFlight = false;
   bool _loading = false;
   String? _error;
   List<CourierLocationPoint> _locations = [];
@@ -31,55 +36,102 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
   void initState() {
     super.initState();
     _loadLocations();
+    _startAutoRefresh();
   }
 
-  Future<void> _loadLocations() async {
-    setState(() {
-      _loading = true;
-      _error = null;
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted || _isRequestInFlight) return;
+
+      // Poll only when this page is currently visible to the user.
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
+      if (!isCurrentRoute) return;
+
+      _loadLocations(showLoading: false);
     });
+  }
 
-    final result =
-        await ApiService.getCourierLocations(orderId: widget.orderId);
-    final orderDetails = widget.orderId == null
-        ? null
-        : await ApiService.getOrderDetails(widget.orderId!);
+  Future<void> _loadLocations({bool showLoading = true}) async {
+    if (_isRequestInFlight) return;
+    _isRequestInFlight = true;
 
-    if (!mounted) return;
+    if (showLoading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    } else {
+      setState(() {
+        _error = null;
+      });
+    }
 
-    setState(() {
-      _locations = result.locations;
-      _loading = false;
-      _lastUpdatedAt = DateTime.now();
+    final futures = <Future<dynamic>>[
+      ApiService.getCourierLocations(orderId: widget.orderId),
+      if (widget.orderId != null)
+        ApiService.getOrderDetails(widget.orderId!).catchError((_) => null),
+    ];
 
-      _businessName = orderDetails?.business.name;
-      _businessAddress = orderDetails?.business.address;
-      _deliveryAddress =
-          _buildDeliveryAddressText(orderDetails?.order.deliveryAddress);
+    try {
+      final responses = await Future.wait(futures);
+      final result = responses.first as CourierLocationsResult;
+      final orderDetails =
+          responses.length > 1 ? responses[1] as OrderDetails? : null;
 
-      final businessCoordinates = orderDetails?.business.coordinates;
-      _businessPoint = (businessCoordinates != null &&
-              (businessCoordinates.lat != 0 || businessCoordinates.lon != 0))
-          ? LatLng(businessCoordinates.lat, businessCoordinates.lon)
-          : null;
+      if (!mounted) return;
 
-      final deliveryCoordinates =
-          orderDetails?.order.deliveryAddress?.coordinates;
-      _deliveryPoint = (deliveryCoordinates != null &&
-              (deliveryCoordinates.lat != 0 || deliveryCoordinates.lon != 0))
-          ? LatLng(deliveryCoordinates.lat, deliveryCoordinates.lon)
-          : null;
+      setState(() {
+        _locations = result.locations;
+        _loading = false;
+        _lastUpdatedAt = DateTime.now();
 
-      if (result.isCourierNotAssigned) {
-        _error = result.errorMessage ?? 'У заказа не назначен курьер';
-      } else if (!result.success && _locations.isEmpty) {
-        _error = result.errorMessage ?? 'Не удалось получить локации курьеров';
-      } else if (_locations.isEmpty) {
-        _error = 'Список локаций пуст';
-      }
-    });
+        _businessName = orderDetails?.business.name;
+        _businessAddress = orderDetails?.business.address;
+        _deliveryAddress =
+            _buildDeliveryAddressText(orderDetails?.order.deliveryAddress);
 
-    _fitMapToAllPoints();
+        final businessCoordinates = orderDetails?.business.coordinates;
+        _businessPoint = (businessCoordinates != null &&
+                (businessCoordinates.lat != 0 || businessCoordinates.lon != 0))
+            ? LatLng(businessCoordinates.lat, businessCoordinates.lon)
+            : null;
+
+        final deliveryCoordinates =
+            orderDetails?.order.deliveryAddress?.coordinates;
+        _deliveryPoint = (deliveryCoordinates != null &&
+                (deliveryCoordinates.lat != 0 || deliveryCoordinates.lon != 0))
+            ? LatLng(deliveryCoordinates.lat, deliveryCoordinates.lon)
+            : null;
+
+        if (result.isCourierNotAssigned) {
+          _error = result.errorMessage ?? 'У заказа не назначен курьер';
+        } else if (!result.success && _locations.isEmpty) {
+          _error =
+              result.errorMessage ?? 'Не удалось получить локации курьеров';
+        } else if (_locations.isEmpty) {
+          _error = 'Список локаций пуст';
+        }
+      });
+
+      _fitMapToAllPoints();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (_locations.isEmpty) {
+          _error = 'Не удалось обновить геолокацию';
+        }
+      });
+    } finally {
+      _isRequestInFlight = false;
+    }
   }
 
   String _fmtDateTime(DateTime dateTime) {
@@ -273,17 +325,30 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
   Widget _buildMetaRow(String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: RichText(
-        text: TextSpan(
-          style: DefaultTextStyle.of(context).style,
+      child: Text.rich(
+        TextSpan(
           children: [
             TextSpan(
               text: '$title: ',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: Colors.black87,
+                decoration: TextDecoration.none,
+              ),
             ),
-            TextSpan(text: value),
+            TextSpan(
+              text: value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: Colors.black87,
+                decoration: TextDecoration.none,
+              ),
+            ),
           ],
         ),
+        softWrap: true,
       ),
     );
   }
@@ -316,43 +381,42 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'naliv.merchant',
+                  urlTemplate:
+                      'https://{s}.maps.2gis.com/tiles?x={x}&y={y}&z={z}',
+                  subdomains: const ['tile0', 'tile1', 'tile2', 'tile3'],
+                  tileProvider: CancellableNetworkTileProvider(),
                 ),
                 MarkerLayer(
                   markers: [
                     ..._locations.map(
                       (loc) => Marker(
                         point: LatLng(loc.lat, loc.lon),
-                        width: 48,
-                        height: 48,
-                        child: const Icon(
-                          Icons.location_pin,
+                        width: 86,
+                        height: 30,
+                        child: _buildTextMarker(
+                          label: 'Курьер',
                           color: Colors.red,
-                          size: 42,
                         ),
                       ),
                     ),
                     if (_deliveryPoint != null)
                       Marker(
                         point: _deliveryPoint!,
-                        width: 44,
-                        height: 44,
-                        child: const Icon(
-                          Icons.home,
+                        width: 96,
+                        height: 30,
+                        child: _buildTextMarker(
+                          label: 'Доставка',
                           color: Colors.blue,
-                          size: 36,
                         ),
                       ),
                     if (_businessPoint != null)
                       Marker(
                         point: _businessPoint!,
-                        width: 44,
-                        height: 44,
-                        child: const Icon(
-                          Icons.store,
+                        width: 86,
+                        height: 30,
+                        child: _buildTextMarker(
+                          label: 'Бизнес',
                           color: Colors.orange,
-                          size: 34,
                         ),
                       ),
                   ],
@@ -398,6 +462,35 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
           _LegendRow(color: Colors.blue, label: 'Доставка'),
           _LegendRow(color: Colors.orange, label: 'Бизнес'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextMarker({required String label, required Color color}) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            height: 1,
+          ),
+        ),
       ),
     );
   }

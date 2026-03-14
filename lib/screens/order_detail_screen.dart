@@ -379,14 +379,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                   const SizedBox(height: 4),
                   SizedBox(
-                    width: 72,
+                    width: 94,
                     child: Text(
                       OrderStatusCatalog.resolve(status),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
+                        height: 1.15,
                         color: isCurrent ? color : Colors.grey.shade600,
                         fontWeight:
                             isCurrent ? FontWeight.w700 : FontWeight.w500,
