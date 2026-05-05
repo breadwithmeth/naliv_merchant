@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -82,8 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Вход'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
       ),
       body: SafeArea(
         child: Padding(
@@ -94,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Icon(
                 Icons.security,
                 size: 80,
-                color: Colors.orange,
+                color: AppThemePalette.brand,
               ),
               const SizedBox(height: 32),
               const Text(
@@ -133,9 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(
-                      color: Colors.orange,
-                      width: 2,
-                    ),
+                        color: AppThemePalette.brand, width: 2),
                   ),
                   prefixIcon: const Icon(Icons.vpn_key),
                 ),
@@ -158,8 +155,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppThemePalette.brand,
+                    foregroundColor: AppThemePalette.onBrand,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

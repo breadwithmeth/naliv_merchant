@@ -8,37 +8,35 @@ class OrderTipsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Подсказки по заказу'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          _TipCard(
+        children: [
+          const _TipCard(
             icon: Icons.timeline,
             title: 'Статусы по шагам',
             text:
                 'Рекомендуемый порядок: Принят -> Просмотрен -> Собирается -> Готов к выдаче -> Передан курьеру.',
           ),
-          _TipCard(
+          const _TipCard(
             icon: Icons.qr_code_scanner,
             title: 'Сканер и количество',
             text:
                 'Проверяйте штрихкоды при сборке и сразу корректируйте количество. Перед переводом статуса убедитесь, что количество всех товаров заполнено.',
           ),
-          _TipCard(
+          const _TipCard(
             icon: Icons.delivery_dining,
             title: 'Передача курьеру',
             text:
                 'Перед сменой статуса на "Передан курьеру" сверяйте адрес доставки и наличие контакта клиента.',
           ),
-          _TipCard(
+          const _TipCard(
             icon: Icons.map_outlined,
             title: 'Геолокация',
             text:
                 'На карте: красный маркер - курьер, синий - адрес доставки, оранжевый - бизнес. Если курьер не назначен, уточните назначение в диспетчерской.',
           ),
-          _TipCard(
+          const _TipCard(
             icon: Icons.support_agent,
             title: 'Если есть проблемы',
             text:
@@ -63,6 +61,7 @@ class _TipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -74,10 +73,10 @@ class _TipCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.12),
+                color: primary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: Colors.orange),
+              child: Icon(icon, color: primary),
             ),
             const SizedBox(width: 10),
             Expanded(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class DiscountHelpScreen extends StatelessWidget {
   final String? orderId;
@@ -10,8 +11,6 @@ class DiscountHelpScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Проблемы со скидками'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -122,8 +121,8 @@ class DiscountHelpScreen extends StatelessWidget {
                   // Здесь можно открыть форму обращения или отправить сообщение в поддержку
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppThemePalette.brand,
+                  foregroundColor: AppThemePalette.onBrand,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 child: const Text('Связаться со службой поддержки'),

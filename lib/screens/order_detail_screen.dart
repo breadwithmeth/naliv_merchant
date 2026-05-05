@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
@@ -5,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'courier_locations_screen.dart';
 import 'discount_help_screen.dart';
 import 'order_tips_screen.dart';
+import '../theme/app_theme.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -20,6 +24,8 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   OrderDetails? _orderDetails;
+  Timer? _autoRefreshTimer;
+  bool _isRequestInFlight = false;
   bool _isLoading = true;
   String? _error;
   final TextEditingController _barcodeCtrl = TextEditingController();
@@ -32,11 +38,53 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       {}; // relationId -> обновленное количество
   final Set<int> _confirmedItems = {}; // relationId подтвержденных
   bool _autoSeenAttempted = false;
+  final Random _random = Random();
+  static const List<String> _readyTooEarlyMessages = [
+    'Слишком рано переводить в "Готов к выдаче". Дайте сборке немного времени.',
+    'Почти готово, но нужно подождать еще чуть-чуть перед статусом "Готов к выдаче".',
+    'Проверяем финальные позиции. Через минуту можно ставить "Готов к выдаче".',
+    'Сборка только началась. Подождите немного перед следующим статусом.',
+    'Не спешите: статус "Готов к выдаче" доступен спустя минуту после "Собирается".',
+
+    // базовая ирония
+    'Куда спешишь, ковбой? Заказ еще собирается.',
+    'Спокойно, шеф. Мы еще даже не закончили сборку.',
+    'Полегче с кнопками. Заказ пока не готов.',
+    'Так быстро только пиццу в рекламе готовят.',
+    'Тише-тише. Заказ еще в процессе сборки.',
+    'Даже курьеры так не торопятся.',
+    'Пальцы быстрее кухни. Заказ еще собирается.',
+    'Рано стрелять. Заказ еще не готов.',
+    'Спокойствие. Заказ еще не дошел до стадии "Готов к выдаче".',
+    'Терпение, падаван. Сборка еще идет.',
+
+    // сарказм
+    'Интересный подход — выдавать то, что еще не собрано.',
+    'Если нажать еще пару раз — быстрее не станет.',
+    'Кнопка не ускоряет сборку, к сожалению.',
+    'Отличная попытка, но заказ еще не готов.',
+    'Спойлер: он все еще собирается.',
+    'Не переживайте, мы тоже хотим закончить быстрее.',
+    'Нажатие принято. Сборка все еще идет.',
+    'Не торопитесь. Мы проверяли — магия не работает.',
+
+    // немного токсично-саркастичные
+    'Вы уверены, что хотите выдать несобранный заказ?',
+    'Похоже, кто-то очень верит в чудеса.',
+    'Система проверила — заказ все еще собирается.',
+    'План хороший. Но заказ все еще не готов.',
+    'Попробуйте снова через минуту. Правда.',
+    'Мы тоже хотели бы, чтобы он уже был готов.',
+    'Если очень захотеть — все равно придется подождать.',
+    'Рано. Даже система удивилась.',
+    'Еще немного терпения. Это не мгновенная лапша.',
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadOrderDetails();
+    _startAutoRefresh();
     _barcodeFocusNode.addListener(() {
       if (_barcodeFocusNode.hasFocus) {
         // Прячем виртуальную клавиатуру, оставляя фокус для аппаратного ввода
@@ -47,18 +95,36 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
     _barcodeCtrl.dispose();
     _barcodeFocusNode.dispose();
     _scannerController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadOrderDetails() async {
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || _isRequestInFlight) return;
+
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
+      if (!isCurrentRoute) return;
+
+      _loadOrderDetails(showLoading: false);
+    });
+  }
+
+  Future<void> _loadOrderDetails({bool showLoading = true}) async {
+    if (_isRequestInFlight) return;
+    _isRequestInFlight = true;
+
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      if (showLoading) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
 
       OrderDetails? details =
           await ApiService.getOrderDetails(widget.orderId.toString());
@@ -103,8 +169,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Ошибка загрузки: $e';
+        if (showLoading || _orderDetails == null) {
+          _error = 'Ошибка загрузки: $e';
+        }
       });
+    } finally {
+      _isRequestInFlight = false;
     }
   }
 
@@ -113,8 +183,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Заказ #${widget.orderId}'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -483,13 +551,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 );
               },
-              icon: const Icon(Icons.lightbulb_outline, color: Colors.orange),
+              icon: const Icon(Icons.lightbulb_outline,
+                  color: AppThemePalette.brand),
               label: const Text(
                 'Подсказки по обработке заказа',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: AppThemePalette.brand),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.orange),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -507,13 +575,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 );
               },
-              icon: const Icon(Icons.help_outline, color: Colors.orange),
+              icon:
+                  const Icon(Icons.help_outline, color: AppThemePalette.brand),
               label: const Text(
                 'Помогите, у меня не работают скидки!',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: AppThemePalette.brand),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.orange),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -532,13 +600,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 );
               },
-              icon: const Icon(Icons.my_location, color: Colors.orange),
+              icon: const Icon(Icons.my_location, color: AppThemePalette.brand),
               label: const Text(
                 'Геолокация курьера',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: AppThemePalette.brand),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.orange),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -592,7 +659,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.qr_code_scanner, color: Colors.orange),
+                const Icon(Icons.qr_code_scanner, color: AppThemePalette.brand),
                 SizedBox(width: isSmall ? 6 : 8),
                 Text(
                   'Сканер штрихкодов',
@@ -802,6 +869,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildClientSection() {
     final user = _orderDetails!.order.user;
+    final courier = _orderDetails!.order.courier;
     final isSmall = MediaQuery.of(context).size.width < 380 ||
         MediaQuery.of(context).size.height < 700;
     return Card(
@@ -854,6 +922,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ],
             ),
+            if (courier != null) ...[
+              SizedBox(height: isSmall ? 8 : 12),
+              const Divider(height: 1),
+              SizedBox(height: isSmall ? 8 : 12),
+              Row(
+                children: [
+                  const Icon(Icons.delivery_dining, color: Colors.orange),
+                  SizedBox(width: isSmall ? 8 : 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Курьер: ${courier.name}',
+                          style: TextStyle(
+                            fontSize: isSmall ? 13 : 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (courier.login.isNotEmpty)
+                          Text(
+                            courier.login,
+                            style: TextStyle(
+                              fontSize: isSmall ? 12 : 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -1239,6 +1340,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _buildFinancialSection() {
     final cost = _orderDetails!.order.costSummary;
+    final totalWithDeliveryServiceFee = cost.subtotal +
+        cost.deliveryPrice +
+        cost.deliveryServiceFee +
+        cost.serviceFee -
+        cost.bonusUsed;
     final isSmall = MediaQuery.of(context).size.width < 380 ||
         MediaQuery.of(context).size.height < 700;
     return Card(
@@ -1265,6 +1371,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 'Стоимость товаров', '${cost.itemsTotal.toStringAsFixed(2)} ₸'),
             if (cost.deliveryPrice > 0)
               _buildInfoRow('Доставка', '${cost.deliveryPrice} ₸'),
+            if (cost.deliveryServiceFee > 0)
+              _buildInfoRow('Сервис доставки', '${cost.deliveryServiceFee} ₸'),
             if (cost.serviceFee > 0)
               _buildInfoRow('Сервисный сбор', '${cost.serviceFee} ₸'),
             if (cost.bonusUsed > 0)
@@ -1273,7 +1381,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const Divider(),
             _buildInfoRow(
               'Итого к оплате',
-              '${cost.totalSum.toStringAsFixed(2)} ₸',
+              '${totalWithDeliveryServiceFee.toStringAsFixed(2)} ₸',
               isTotal: true,
             ),
           ],
@@ -1798,6 +1906,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
       return;
     }
+
+    final currentStatus = _orderDetails!.order.currentStatus;
+    if (currentStatus.status == 12 && newStatus == 2) {
+      final now = DateTime.now();
+      final allowedAt = currentStatus.timestamp.add(const Duration(minutes: 1));
+      if (now.isBefore(allowedAt)) {
+        final randomMessage = _readyTooEarlyMessages[
+            _random.nextInt(_readyTooEarlyMessages.length)];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(randomMessage),
+            backgroundColor: Colors.deepOrange,
+          ),
+        );
+        return;
+      }
+    }
+
     try {
       final success = await ApiService.updateOrderStatus(
         widget.orderId.toString(),

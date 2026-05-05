@@ -422,6 +422,7 @@ class Order {
   final DeliveryAddress? deliveryAddress;
   final String deliveryType;
   final int deliveryPrice;
+  final int deliveryServiceFee;
   final int cost;
   final int serviceFee;
   final int totalCost;
@@ -440,6 +441,7 @@ class Order {
     this.deliveryAddress,
     required this.deliveryType,
     required this.deliveryPrice,
+    required this.deliveryServiceFee,
     required this.cost,
     required this.serviceFee,
     required this.totalCost,
@@ -462,6 +464,7 @@ class Order {
           : null,
       deliveryType: json['delivery_type'] ?? 'Не указан',
       deliveryPrice: json['delivery_price'] ?? 0,
+      deliveryServiceFee: json['delivery_service_fee'] ?? 0,
       cost: (json['cost'] is String)
           ? double.tryParse(json['cost'])?.toInt() ?? 0
           : (json['cost'] ?? 0).toInt(),
@@ -654,6 +657,7 @@ class OrderDetail {
   final int orderId;
   final String orderUuid;
   final User user;
+  final OrderCourier? courier;
   final DeliveryAddress? deliveryAddress;
   final String deliveryType;
   final DateTime? deliveryDate;
@@ -671,6 +675,7 @@ class OrderDetail {
     required this.orderId,
     required this.orderUuid,
     required this.user,
+    this.courier,
     this.deliveryAddress,
     required this.deliveryType,
     this.deliveryDate,
@@ -690,6 +695,9 @@ class OrderDetail {
       orderId: json['order_id'] ?? 0,
       orderUuid: json['order_uuid'] ?? '',
       user: User.fromJson(json['user']),
+      courier: json['courier'] != null
+          ? OrderCourier.fromJson(json['courier'])
+          : null,
       deliveryAddress: json['delivery_address'] != null
           ? DeliveryAddress.fromJson(json['delivery_address'])
           : null,
@@ -714,6 +722,29 @@ class OrderDetail {
       extra: json['extra'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       bonus: json['bonus'] ?? 0,
+    );
+  }
+}
+
+class OrderCourier {
+  final int courierId;
+  final String login;
+  final String name;
+  final String? accessLevel;
+
+  OrderCourier({
+    required this.courierId,
+    required this.login,
+    required this.name,
+    this.accessLevel,
+  });
+
+  factory OrderCourier.fromJson(Map<String, dynamic> json) {
+    return OrderCourier(
+      courierId: json['courier_id'] ?? json['id'] ?? 0,
+      login: json['login']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Не указан',
+      accessLevel: json['access_level']?.toString(),
     );
   }
 }
@@ -831,6 +862,7 @@ class ItemOption {
 class CostSummary {
   final double itemsTotal;
   final int deliveryPrice;
+  final int deliveryServiceFee;
   final int serviceFee;
   final int bonusUsed;
   final double subtotal;
@@ -839,6 +871,7 @@ class CostSummary {
   CostSummary({
     required this.itemsTotal,
     required this.deliveryPrice,
+    required this.deliveryServiceFee,
     required this.serviceFee,
     required this.bonusUsed,
     required this.subtotal,
@@ -849,6 +882,7 @@ class CostSummary {
     return CostSummary(
       itemsTotal: (json['items_total'] ?? 0.0).toDouble(),
       deliveryPrice: json['delivery_price'] ?? 0,
+      deliveryServiceFee: json['delivery_service_fee'] ?? 0,
       serviceFee: json['service_fee'] ?? 0,
       bonusUsed: json['bonus_used'] ?? 0,
       subtotal: (json['subtotal'] ?? 0.0).toDouble(),

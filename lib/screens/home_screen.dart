@@ -7,6 +7,7 @@ import '../screens/order_detail_screen.dart';
 import 'login_screen.dart';
 import 'courier_reports_screen.dart';
 import 'courier_locations_screen.dart';
+import '../theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -123,8 +124,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Заказы'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.location_on_outlined),
@@ -166,8 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           _showTokenDialog();
         },
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.info, color: Colors.white),
+        backgroundColor: AppThemePalette.brand,
+        child: const Icon(Icons.info, color: AppThemePalette.onBrand),
       ),
     );
   }

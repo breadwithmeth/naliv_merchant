@@ -1,89 +1,105 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
-/// Цветовая схема приложения, основанная на Material Theme
-class AppColors {
-  // Основные цвета из Material Theme
-  static const Color primary = CupertinoColors.activeOrange;
-  static const Color secondary = CupertinoColors.activeBlue;
-  static const Color success = CupertinoColors.activeGreen;
-  static const Color danger = CupertinoColors.destructiveRed;
-  static const Color warning = CupertinoColors.systemYellow;
-
-  // Цвета фона
-  static const Color background = CupertinoColors.white;
-  static const Color surface = CupertinoColors.systemGrey6;
-  static const Color scaffold = CupertinoColors.white;
-
-  // Цвета текста
-  static const Color textPrimary = CupertinoColors.black;
-  static const Color textSecondary = CupertinoColors.systemGrey;
-  static const Color textLabel = CupertinoColors.secondaryLabel;
-
-  // Цвета для навигации
-  static const Color navigationBar = CupertinoColors.activeOrange;
-  static const Color navigationText = CupertinoColors.white;
-
-  // Цвета для кнопок
-  static const Color buttonPrimary = CupertinoColors.activeOrange;
-  static const Color buttonSecondary = CupertinoColors.systemGrey;
-  static const Color buttonSuccess = CupertinoColors.activeGreen;
-  static const Color buttonDanger = CupertinoColors.destructiveRed;
-
-  // Цвета для границ
-  static const Color border = CupertinoColors.systemGrey4;
-  static const Color borderError = CupertinoColors.destructiveRed;
-
-  // Цвета для статусов заказов (как в оригинальном коде)
-  static const Color orderNew = CupertinoColors.activeGreen;
-  static const Color orderAccepted = CupertinoColors.activeBlue;
-  static const Color orderReady = CupertinoColors.systemYellow;
-  static const Color orderDelivered = CupertinoColors.destructiveRed;
-  static const Color orderUnpaid = CupertinoColors.destructiveRed;
+class AppThemePalette {
+  static const Color brand = Color(0xFF1E5AA8);
+  static const Color onBrand = Colors.white;
+  static const Color background = Colors.white;
+  static const Color surface = Colors.white;
+  static const Color textPrimary = Color(0xFF1F2A37);
+  static const Color textMuted = Color(0xFF6B7280);
+  static const Color border = Color(0xFFD5DEE8);
 }
 
-/// Размеры и отступы
-class AppDimensions {
-  static const double paddingSmall = 8.0;
-  static const double paddingMedium = 16.0;
-  static const double paddingLarge = 24.0;
-  static const double paddingXLarge = 32.0;
+class AppTheme {
+  static ThemeData get light {
+    const scheme = ColorScheme.light(
+      primary: AppThemePalette.brand,
+      onPrimary: AppThemePalette.onBrand,
+      secondary: Color(0xFF2F7DDA),
+      onSecondary: Colors.white,
+      surface: AppThemePalette.surface,
+      onSurface: AppThemePalette.textPrimary,
+      error: Color(0xFFC2410C),
+      onError: Colors.white,
+    );
 
-  static const double borderRadius = 8.0;
-  static const double borderRadiusLarge = 12.0;
-
-  static const double iconSize = 24.0;
-  static const double iconSizeLarge = 32.0;
-  static const double iconSizeXLarge = 80.0;
-}
-
-/// Стили текста
-class AppTextStyles {
-  static const TextStyle heading1 = TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.bold,
-  );
-
-  static const TextStyle heading2 = TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.w600,
-  );
-
-  static const TextStyle body = TextStyle(
-    fontSize: 16,
-  );
-
-  static const TextStyle bodySecondary = TextStyle(
-    fontSize: 16,
-    color: AppColors.textSecondary,
-  );
-
-  static const TextStyle caption = TextStyle(
-    fontSize: 14,
-    color: AppColors.textLabel,
-  );
-
-  static const TextStyle button = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-  );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: AppThemePalette.background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppThemePalette.surface,
+        foregroundColor: AppThemePalette.textPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+      ),
+      cardTheme: CardThemeData(
+        color: AppThemePalette.surface,
+        elevation: 1.5,
+        shadowColor: const Color(0x14000000),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppThemePalette.brand,
+          foregroundColor: AppThemePalette.onBrand,
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppThemePalette.brand,
+          side: BorderSide.none,
+          backgroundColor: AppThemePalette.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppThemePalette.brand,
+        foregroundColor: AppThemePalette.onBrand,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppThemePalette.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppThemePalette.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppThemePalette.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide:
+              const BorderSide(color: AppThemePalette.brand, width: 1.8),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: AppThemePalette.border),
+      textTheme: const TextTheme(
+        headlineSmall: TextStyle(
+          color: AppThemePalette.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        titleMedium: TextStyle(
+          color: AppThemePalette.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyMedium: TextStyle(color: AppThemePalette.textPrimary),
+        bodySmall: TextStyle(color: AppThemePalette.textMuted),
+      ),
+    );
+  }
 }

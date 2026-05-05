@@ -19,6 +19,12 @@ class CourierLocationsScreen extends StatefulWidget {
 }
 
 class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
+  static const Color _pageBg = Colors.white;
+  static const Color _surface = Colors.white;
+  static const Color _ink = Color(0xFF1F2A37);
+  static const Color _muted = Color(0xFF6B7280);
+  static const Color _brand = Color(0xFF1E5AA8);
+
   final MapController _mapController = MapController();
   Timer? _pollingTimer;
   bool _isRequestInFlight = false;
@@ -161,14 +167,17 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _pageBg,
       appBar: AppBar(
         title: Text(
           widget.orderId == null
               ? 'Локации курьеров'
               : 'Курьер по заказу #${widget.orderId}',
         ),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
+        backgroundColor: _surface,
+        foregroundColor: _ink,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -211,21 +220,23 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
 
   Widget _buildBody() {
     if (_loading && _locations.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: _brand),
+      );
     }
 
     if (_error != null && _locations.isEmpty) {
       return ListView(
         children: [
           const SizedBox(height: 120),
-          const Center(
-            child: Icon(Icons.location_off, size: 64, color: Colors.grey),
+          Center(
+            child: Icon(Icons.location_off, size: 64, color: _muted),
           ),
           const SizedBox(height: 12),
           Center(
             child: Text(
               _error!,
-              style: const TextStyle(color: Colors.grey),
+              style: const TextStyle(color: _muted),
               textAlign: TextAlign.center,
             ),
           ),
@@ -233,6 +244,10 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
           Center(
             child: ElevatedButton(
               onPressed: _loadLocations,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _brand,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Повторить'),
             ),
           ),
@@ -248,14 +263,7 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
-                  _lastUpdatedAt == null
-                      ? (widget.orderId == null
-                          ? 'Локации курьеров'
-                          : 'Локация курьера для заказа #${widget.orderId}')
-                      : 'Обновлено: ${_fmtDateTime(_lastUpdatedAt!)}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
+                child: _buildHeaderInfo(),
               ),
               _buildOrderMetaCard(),
               if (_locations.isNotEmpty) _buildMapCard(),
@@ -268,28 +276,108 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
             location.courierName ?? location.courierLogin ?? 'Курьер';
 
         return Card(
+          elevation: 1,
+          color: _surface,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.orange,
-              child: Icon(Icons.delivery_dining, color: Colors.white),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            leading: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _brand.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delivery_dining, color: _brand),
             ),
-            title: Text(courierName),
+            title: Text(
+              courierName,
+              style: const TextStyle(
+                color: _ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 4),
                 if (location.courierId != null)
-                  Text('ID: ${location.courierId}'),
+                  Text(
+                    'ID: ${location.courierId}',
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
                 Text(
-                    'Координаты: ${location.lat.toStringAsFixed(6)}, ${location.lon.toStringAsFixed(6)}'),
+                  'Координаты: ${location.lat.toStringAsFixed(6)}, ${location.lon.toStringAsFixed(6)}',
+                  style: const TextStyle(color: _muted, fontSize: 12),
+                ),
                 if (location.updatedAt != null &&
                     location.updatedAt!.isNotEmpty)
-                  Text('Обновлено: ${location.updatedAt}'),
+                  Text(
+                    'Обновлено: ${location.updatedAt}',
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHeaderInfo() {
+    final updatedText = _lastUpdatedAt == null
+        ? 'Данные загружаются'
+        : 'Обновлено: ${_fmtDateTime(_lastUpdatedAt!)}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, color: _brand, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              updatedText,
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _brand.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '${_locations.length} курьер(ов)',
+              style: const TextStyle(
+                color: _brand,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -311,7 +399,12 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
     }
 
     return Card(
+      elevation: 1,
+      color: _surface,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -333,7 +426,7 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: Colors.black87,
+                color: _ink,
                 decoration: TextDecoration.none,
               ),
             ),
@@ -342,7 +435,7 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
-                color: Colors.black87,
+                color: _muted,
                 decoration: TextDecoration.none,
               ),
             ),
@@ -367,7 +460,13 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
       height: 280,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -427,12 +526,12 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
               right: 10,
               top: 10,
               child: Material(
-                color: Colors.white,
+                color: _surface,
                 elevation: 1,
                 borderRadius: BorderRadius.circular(20),
                 child: IconButton(
                   tooltip: 'Показать все точки',
-                  icon: const Icon(Icons.center_focus_strong),
+                  icon: const Icon(Icons.center_focus_strong, color: _ink),
                   onPressed: _fitMapToAllPoints,
                 ),
               ),
@@ -452,8 +551,15 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: _surface.withOpacity(0.95),
         borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +592,7 @@ class _CourierLocationsScreenState extends State<CourierLocationsScreen> {
           label,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
             height: 1,
           ),

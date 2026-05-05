@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'discount_help_screen.dart';
+import '../theme/app_theme.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final Order order;
@@ -15,8 +16,6 @@ class OrderDetailsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Заказ #${order.orderId}'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
@@ -166,7 +165,7 @@ class OrderDetailsScreen extends StatelessWidget {
             Row(
               children: [
                 const CircleAvatar(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppThemePalette.brand,
                   child: Icon(Icons.person, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
@@ -225,7 +224,7 @@ class OrderDetailsScreen extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on, color: Colors.orange),
+                const Icon(Icons.location_on, color: AppThemePalette.brand),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -267,7 +266,7 @@ class OrderDetailsScreen extends StatelessWidget {
                           margin: const EdgeInsets.only(top: 8),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: AppThemePalette.brand.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -329,6 +328,9 @@ class OrderDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildFinancialSection() {
+    final totalWithDeliveryServiceFee =
+        order.totalCost + order.deliveryServiceFee;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -346,6 +348,8 @@ class OrderDetailsScreen extends StatelessWidget {
             _buildInfoRow('Стоимость товаров', '${order.cost} ₸'),
             if (order.deliveryPrice > 0)
               _buildInfoRow('Доставка', '${order.deliveryPrice} ₸'),
+            if (order.deliveryServiceFee > 0)
+              _buildInfoRow('Сервис доставки', '${order.deliveryServiceFee} ₸'),
             if (order.serviceFee > 0)
               _buildInfoRow('Сервисный сбор', '${order.serviceFee} ₸'),
             if (order.bonus > 0)
@@ -354,7 +358,7 @@ class OrderDetailsScreen extends StatelessWidget {
             const Divider(),
             _buildInfoRow(
               'Итого к оплате',
-              '${order.totalCost} ₸',
+              '$totalWithDeliveryServiceFee ₸',
               isTotal: true,
             ),
           ],
@@ -383,7 +387,9 @@ class OrderDetailsScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              color: isTotal ? Colors.orange : (valueColor ?? Colors.black),
+              color: isTotal
+                  ? AppThemePalette.brand
+                  : (valueColor ?? Colors.black),
             ),
           ),
         ],
@@ -437,8 +443,8 @@ class OrderDetailsScreen extends StatelessWidget {
             icon: const Icon(Icons.phone),
             label: const Text('Связаться с клиентом'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
+              backgroundColor: AppThemePalette.brand,
+              foregroundColor: AppThemePalette.onBrand,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -456,13 +462,12 @@ class OrderDetailsScreen extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.help_outline, color: Colors.orange),
+            icon: const Icon(Icons.help_outline, color: AppThemePalette.brand),
             label: const Text(
               'Помогите, у меня не работают скидки!',
-              style: TextStyle(color: Colors.orange),
+              style: TextStyle(color: AppThemePalette.brand),
             ),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.orange),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),

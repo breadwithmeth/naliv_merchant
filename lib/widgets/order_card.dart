@@ -13,139 +13,157 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
+      child: Material(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок заказа
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Заказ #${order.orderId}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Заголовок заказа
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Заказ #${order.orderId}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  _buildStatusChip(order.currentStatus),
-                ],
-              ),
-              const SizedBox(height: 8),
+                    _buildStatusChip(order.currentStatus),
+                  ],
+                ),
+                const SizedBox(height: 8),
 
-              // Информация о клиенте
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    order.user.name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // Адрес доставки
-              if (order.deliveryAddress != null) ...[
+                // Информация о клиенте
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                    const Icon(Icons.person, size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        order.deliveryAddress!.address,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      order.user.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-              ],
 
-              // Время доставки
-              Row(
-                children: [
-                  const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    order.deliveryDate != null
-                        ? _formatDate(order.deliveryDate!)
-                        : 'Дата не указана',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                // Адрес доставки
+                if (order.deliveryAddress != null) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          order.deliveryAddress!.address,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 4),
                 ],
-              ),
-              const SizedBox(height: 12),
 
-              // Нижняя секция с суммой и количеством товаров
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //   children: [
-              //     Column(
-              //       crossAxisAlignment: CrossAxisAlignment.start,
-              //       children: [
-              //         Text(
-              //           'Товаров: ${order.itemsCount}',
-              //           style: const TextStyle(
-              //             fontSize: 14,
-              //             color: Colors.grey,
-              //           ),
-              //         ),
-              //         Text(
-              //           order.paymentType?.name ?? 'Способ оплаты не указан',
-              //           style: const TextStyle(
-              //             fontSize: 12,
-              //             color: Colors.grey,
-              //           ),
-              //         ),
-              //       ],
-              //     ),
-              //     Column(
-              //       crossAxisAlignment: CrossAxisAlignment.end,
-              //       children: [
-              //         Text(
-              //           '${order.totalCost} ₸',
-              //           style: const TextStyle(
-              //             fontSize: 18,
-              //             fontWeight: FontWeight.bold,
-              //             color: Colors.orange,
-              //           ),
-              //         ),
-              //         if (order.deliveryPrice > 0)
-              //           Text(
-              //             'Доставка: ${order.deliveryPrice} ₸',
-              //             style: const TextStyle(
-              //               fontSize: 12,
-              //               color: Colors.grey,
-              //             ),
-              //           ),
-              //       ],
-              //     ),
-              //   ],
-              // ),
-            ],
+                // Время доставки
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      order.deliveryDate != null
+                          ? _formatDate(order.deliveryDate!)
+                          : 'Дата не указана',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Нижняя секция с суммой и количеством товаров
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //   children: [
+                //     Column(
+                //       crossAxisAlignment: CrossAxisAlignment.start,
+                //       children: [
+                //         Text(
+                //           'Товаров: ${order.itemsCount}',
+                //           style: const TextStyle(
+                //             fontSize: 14,
+                //             color: Colors.grey,
+                //           ),
+                //         ),
+                //         Text(
+                //           order.paymentType?.name ?? 'Способ оплаты не указан',
+                //           style: const TextStyle(
+                //             fontSize: 12,
+                //             color: Colors.grey,
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //     Column(
+                //       crossAxisAlignment: CrossAxisAlignment.end,
+                //       children: [
+                //         Text(
+                //           '${order.totalCost} ₸',
+                //           style: const TextStyle(
+                //             fontSize: 18,
+                //             fontWeight: FontWeight.bold,
+                //             color: Colors.orange,
+                //           ),
+                //         ),
+                //         if (order.deliveryPrice > 0)
+                //           Text(
+                //             'Доставка: ${order.deliveryPrice} ₸',
+                //             style: const TextStyle(
+                //               fontSize: 12,
+                //               color: Colors.grey,
+                //             ),
+                //           ),
+                //       ],
+                //     ),
+                //   ],
+                // ),
+              ],
+            ),
           ),
         ),
       ),

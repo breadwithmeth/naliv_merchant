@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 
 class CourierReportsScreen extends StatefulWidget {
   const CourierReportsScreen({super.key});
@@ -209,8 +210,6 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Отчет по курьерам'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -264,7 +263,7 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
     final withoutCourier = _summary?['orders_without_courier'];
     final totalDeliveryRevenue = _summary?['total_delivery_revenue'];
     return Card(
-      color: Colors.orange.withOpacity(.08),
+      color: AppThemePalette.brand.withOpacity(.08),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -299,7 +298,7 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: Colors.orange),
+        Icon(icon, size: 18, color: AppThemePalette.brand),
         const SizedBox(width: 6),
         Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -316,11 +315,11 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
         onTap: () => _changeSort(key),
         child: Row(children: [
           Text(label,
-              style:
-                  h.copyWith(color: active ? Colors.orange : Colors.black87)),
+              style: h.copyWith(
+                  color: active ? AppThemePalette.brand : Colors.black87)),
           if (active)
             Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 14, color: Colors.orange),
+                size: 14, color: AppThemePalette.brand),
         ]),
       );
     }
@@ -370,10 +369,11 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                 width: 40,
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: Colors.orange.withOpacity(.15),
+                  backgroundColor: AppThemePalette.brand.withOpacity(.15),
                   child: Text('${index + 1}',
                       style: const TextStyle(
-                          color: Colors.orange, fontWeight: FontWeight.bold)),
+                          color: AppThemePalette.brand,
+                          fontWeight: FontWeight.bold)),
                 ),
               ),
               Expanded(
@@ -418,7 +418,7 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
               ),
               IconButton(
                   icon: const Icon(Icons.list_alt,
-                      size: 20, color: Colors.orange),
+                      size: 20, color: AppThemePalette.brand),
                   onPressed: () => _showCourierOrders(c),
                   tooltip: 'Заказы'),
             ]),
@@ -494,7 +494,7 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
   }
 
   Widget _miniChip(IconData icon, String text, {Color? color}) {
-    final c = color ?? Colors.orange;
+    final c = color ?? AppThemePalette.brand;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
