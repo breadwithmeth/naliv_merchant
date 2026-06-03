@@ -191,6 +191,15 @@ class OrderCard extends StatelessWidget {
         backgroundColor = Colors.purple.shade100;
         textColor = Colors.purple.shade700;
         break;
+      case 5:
+      case 50:
+      case 51:
+      case 52:
+      case 53:
+      case 54:
+        backgroundColor = Colors.red.shade100;
+        textColor = Colors.red.shade700;
+        break;
       default:
         backgroundColor = Colors.grey.shade100;
         textColor = Colors.grey.shade700;

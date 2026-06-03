@@ -73,6 +73,10 @@ class ApiService {
 
   /// Обновление статуса заказа
   static Future<bool> updateOrderStatus(String orderId, int status) async {
+    if (_isCancellationStatus(status)) {
+      return _cancelOrder(orderId, status);
+    }
+
     final transitionPath = _statusTransitionPath(status);
     if (transitionPath == null) {
       // Для обратной совместимости: старый универсальный эндпоинт.
@@ -91,6 +95,36 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) {
       print('Error updating order status: $e');
+      return false;
+    }
+  }
+
+  static bool _isCancellationStatus(int status) {
+    return status == 5 ||
+        status == 50 ||
+        status == 51 ||
+        status == 52 ||
+        status == 53 ||
+        status == 54;
+  }
+
+  static Future<bool> _cancelOrder(String orderId, int status) async {
+    try {
+      final headers = await _getHeaders();
+      final uri =
+          Uri.parse('$baseUrl/api/businesses/orders/$orderId/status/cancel');
+
+      final response = await http.patch(
+        uri,
+        headers: headers,
+        body: json.encode({'status': status}),
+      );
+
+      print('Response status: ${response.statusCode}');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error canceling order: $e');
       return false;
     }
   }
@@ -171,14 +205,10 @@ class ApiService {
   }) async {
     try {
       final headers = await _getHeaders();
-      String _fmt(DateTime d) {
-        String two(int v) => v.toString().padLeft(2, '0');
-        return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
-      }
 
       final queryParams = {
-        'start_date': _fmt(startDate),
-        'end_date': _fmt(endDate),
+        'start_date': _formatDateTimeWithTimeZone(startDate),
+        'end_date': _formatDateTimeWithTimeZone(endDate),
       };
       final uri = Uri.parse('$baseUrl/api/businesses/reports/couriers')
           .replace(queryParameters: queryParams);
@@ -193,6 +223,73 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching courier reports: $e');
+      return null;
+    }
+  }
+
+  static String _formatDateTimeWithTimeZone(DateTime value) {
+    final local = value.toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    String three(int v) => v.toString().padLeft(3, '0');
+
+    final offset = local.timeZoneOffset;
+    final sign = offset.isNegative ? '-' : '+';
+    final absoluteOffset = offset.abs();
+    final offsetHours = two(absoluteOffset.inHours);
+    final offsetMinutes = two(absoluteOffset.inMinutes.remainder(60));
+
+    return '${local.year}-${two(local.month)}-${two(local.day)}'
+        'T${two(local.hour)}:${two(local.minute)}:${two(local.second)}'
+        '.${three(local.millisecond)}'
+        '$sign$offsetHours:$offsetMinutes';
+  }
+
+  /// Получить смены с заказами этого бизнеса (по всем курьерам или по одному)
+  static Future<dynamic> getCourierShifts({
+    int? courierId,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/api/businesses/reports/courier-shifts')
+          .replace(queryParameters: {
+        if (courierId != null) 'courier_id': courierId.toString(),
+      });
+      final response = await http.get(uri, headers: headers);
+      print(response.body);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] ?? data;
+      } else {
+        print('Failed to load courier shifts: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching courier shifts: $e');
+      return null;
+    }
+  }
+
+  /// Детальный отчет по конкретной смене курьера в рамках бизнеса
+  static Future<dynamic> getCourierShiftDetail({
+    required String shiftId,
+    required int courierId,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri =
+          Uri.parse('$baseUrl/api/businesses/reports/courier-shifts/$shiftId')
+              .replace(queryParameters: {'courier_id': courierId.toString()});
+      final response = await http.get(uri, headers: headers);
+      print(response.body);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] ?? data;
+      } else {
+        print('Failed to load courier shift detail: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching courier shift detail: $e');
       return null;
     }
   }
@@ -399,6 +496,8 @@ class OrderStatusCatalog {
     50: 'Отменен пользователем',
     51: 'Отменен магазином',
     52: 'Отменен: нет в наличии',
+    53: 'Отменен: клиент младше 21 года',
+    54: 'Отменен: клиент отказался',
     6: 'Ошибка платежа',
     60: 'Ожидает оплаты',
     61: 'Оплата в обработке',

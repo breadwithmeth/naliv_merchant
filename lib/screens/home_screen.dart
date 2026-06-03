@@ -137,14 +137,12 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.insert_chart_outlined),
-            tooltip: 'Отчет курьеры',
+            icon: const Icon(Icons.schedule),
+            tooltip: 'Отчет: курьеры',
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const CourierReportsScreen(),
-                ),
-              );
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const CourierReportsScreen(),
+              ));
             },
           ),
           IconButton(

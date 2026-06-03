@@ -39,6 +39,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   final Set<int> _confirmedItems = {}; // relationId подтвержденных
   bool _autoSeenAttempted = false;
   final Random _random = Random();
+  static const Map<int, String> _cancelStatusLabels = {
+    5: 'Другая причина',
+    50: 'Отменен пользователем',
+    51: 'Отменен магазином',
+    52: 'Нет в наличии',
+    53: 'Клиент младше 21 года',
+    54: 'Клиент отказался',
+  };
   static const List<String> _readyTooEarlyMessages = [
     'Слишком рано переводить в "Готов к выдаче". Дайте сборке немного времени.',
     'Почти готово, но нужно подождать еще чуть-чуть перед статусом "Готов к выдаче".',
@@ -260,6 +268,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return status == 0 || status == 66 || _isErrorStatus(status);
   }
 
+  bool _isCancellationStatus(int status) {
+    return _cancelStatusLabels.containsKey(status);
+  }
+
+  bool _canCancelOrder(int status) {
+    return !_isCancellationStatus(status) &&
+        status != 4 &&
+        status != 66 &&
+        status != 7 &&
+        status != 71 &&
+        !_isErrorStatus(status);
+  }
+
   List<int> _statusFlow() {
     return const [
       0,
@@ -275,6 +296,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       50,
       51,
       52,
+      53,
+      54,
       6,
       60,
       61,
@@ -310,6 +333,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 50:
       case 51:
       case 52:
+      case 53:
+      case 54:
         return Colors.red;
       case 6:
       case 68:
@@ -822,6 +847,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 50:
       case 51:
       case 52:
+      case 53:
+      case 54:
         color = Colors.red;
         icon = Icons.cancel;
         break;
@@ -1513,6 +1540,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final currentStatus = _orderDetails!.order.currentStatus.status;
     final blocked = _hasIncompleteAmounts();
     final isLocked = _isOrderBlockedByStatus(currentStatus);
+    final canCancel = _canCancelOrder(currentStatus);
 
     return Column(
       children: [
@@ -1566,7 +1594,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _showRejectDialog(),
                   icon: const Icon(Icons.close),
-                  label: const Text('Отклонить'),
+                  label: const Text('Отменить'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
@@ -1670,6 +1698,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ],
             ),
           ),
+
+        if (currentStatus != 0 && canCancel) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showRejectDialog(),
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text('Отменить заказ'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: BorderSide(color: Colors.red.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 12),
 
@@ -1957,40 +2002,102 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  // Диалог отклонения заказа
+  Future<void> _cancelOrder(int status) async {
+    try {
+      final messenger = ScaffoldMessenger.of(context);
+      final success = await ApiService.updateOrderStatus(
+        widget.orderId.toString(),
+        status,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Заказ отменен'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadOrderDetails();
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка при отмене заказа'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Диалог отмены заказа
   void _showRejectDialog() {
+    var selectedStatus = 51;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Отклонить заказ'),
-        content: const Text(
-          'Вы уверены, что хотите отклонить этот заказ? Это действие нельзя отменить.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Здесь можно добавить специальный статус для отклоненных заказов
-              // Пока используем статус -1 или специальный статус для отклонения
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content:
-                      Text('Функция отклонения заказа будет добавлена позже'),
-                  backgroundColor: Colors.orange,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Отменить заказ'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Выберите причину отмены. Это действие нельзя отменить.',
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: selectedStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Причина отмены',
+                  border: OutlineInputBorder(),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Отклонить'),
+                items: _cancelStatusLabels.entries
+                    .map(
+                      (entry) => DropdownMenuItem<int>(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setDialogState(() {
+                    selectedStatus = value;
+                  });
+                },
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Закрыть'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _cancelOrder(selectedStatus);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Отменить заказ'),
+            ),
+          ],
+        ),
       ),
     );
   }

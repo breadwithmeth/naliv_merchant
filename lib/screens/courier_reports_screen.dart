@@ -99,7 +99,11 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
         if (o is Map) {
           final courier = o['courier'];
           final deliveryPrice = _toNum(o['delivery_price']);
+          final deliveryServiceFee = _toNum(o['delivery_service_fee']);
           final totalSum = _toNum(o['total_sum']);
+          final orderSumWithoutDelivery = (totalSum - deliveryPrice) < 0
+              ? 0
+              : (totalSum - deliveryPrice);
           final orderId = o['order_id'];
           final created = o['order_created'];
           final address = o['delivery_address'];
@@ -114,6 +118,8 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                       'orders': 0,
                       'deliveryRevenue': 0.0,
                       'totalOrderSum': 0.0,
+                      'paymentTypesMap': <String, Map<String, dynamic>>{},
+                      'paymentTypes': <Map<String, dynamic>>[],
                       'ordersList': <Map<String, dynamic>>[],
                     });
             bucket['orders'] = (bucket['orders'] as int) + 1;
@@ -121,12 +127,43 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                 (bucket['deliveryRevenue'] as num) + deliveryPrice;
             bucket['totalOrderSum'] =
                 (bucket['totalOrderSum'] as num) + totalSum;
+            final paymentType = o['payment_type'];
+            final paymentTypeName = paymentType is Map
+                ? (paymentType['name']?.toString() ?? 'Не указан')
+                : 'Не указан';
+            final paymentTypeBucket =
+                ((bucket['paymentTypesMap'] as Map)[paymentTypeName]
+                    as Map<String, dynamic>?) ??
+                    {
+                      'name': paymentTypeName,
+                      'orders': 0,
+                      'deliveryRevenue': 0.0,
+                      'deliveryServiceFee': 0.0,
+                      'totalOrderSum': 0.0,
+                      'orderSumWithoutDelivery': 0.0,
+                    };
+            paymentTypeBucket['orders'] = (paymentTypeBucket['orders'] as int) + 1;
+            paymentTypeBucket['deliveryRevenue'] =
+                (paymentTypeBucket['deliveryRevenue'] as num) + deliveryPrice;
+            paymentTypeBucket['deliveryServiceFee'] =
+                (paymentTypeBucket['deliveryServiceFee'] as num) +
+                    deliveryServiceFee;
+            paymentTypeBucket['totalOrderSum'] =
+                (paymentTypeBucket['totalOrderSum'] as num) + totalSum;
+            paymentTypeBucket['orderSumWithoutDelivery'] =
+                (paymentTypeBucket['orderSumWithoutDelivery'] as num) +
+                    orderSumWithoutDelivery;
+            (bucket['paymentTypesMap'] as Map<String, Map<String, dynamic>>)[
+                paymentTypeName] = paymentTypeBucket;
             (bucket['ordersList'] as List).add({
               'order_id': orderId,
               'delivery_price': deliveryPrice,
+              'delivery_service_fee': deliveryServiceFee,
               'total_sum': totalSum,
+              'order_sum_without_delivery': orderSumWithoutDelivery,
               'order_created': created,
               'delivery_address': address,
+              'payment_type_name': paymentTypeName,
             });
           } else {
             unassignedOrders.add(o.cast<String, dynamic>());
@@ -135,6 +172,13 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
       }
     }
     _couriers = agg.values.map((e) => e).toList();
+    for (final c in _couriers) {
+      final ptMap = c['paymentTypesMap'] as Map<String, Map<String, dynamic>>?;
+      final types = (ptMap?.values.toList() ?? <Map<String, dynamic>>[])
+        ..sort((a, b) =>
+            (_toNum(b['orders'])).compareTo(_toNum(a['orders'])));
+      c['paymentTypes'] = types;
+    }
     if (unassignedOrders.isNotEmpty) {
       _couriers.add({
         'courierId': -1,
@@ -144,6 +188,8 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
             0, (p, o) => p + _toNum(o['delivery_price'])),
         'totalOrderSum':
             unassignedOrders.fold<num>(0, (p, o) => p + _toNum(o['total_sum'])),
+        'paymentTypesMap': <String, Map<String, dynamic>>{},
+        'paymentTypes': <Map<String, dynamic>>[],
         'ordersList': unassignedOrders,
       });
     }
@@ -391,6 +437,23 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                         _miniChip(Icons.payments,
                             _formatNum(c['deliveryRevenue'] as num?)),
                       ]),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: ((c['paymentTypes'] as List?) ?? [])
+                            .take(2)
+                            .map((pt) {
+                          final p = pt is Map
+                              ? Map<String, dynamic>.from(pt)
+                              : <String, dynamic>{};
+                          final label = p['name']?.toString() ?? 'Не указан';
+                          final count = _formatNum(_toNum(p['orders']));
+                          return _miniChip(Icons.account_balance_wallet,
+                              '$label: $count',
+                              color: Colors.teal);
+                        }).toList(),
+                      ),
                     ]),
               ),
               Expanded(
@@ -430,6 +493,7 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
 
   void _showCourierOrders(Map<String, dynamic> courier) {
     final orders = (courier['ordersList'] as List?) ?? [];
+    final paymentTypes = (courier['paymentTypes'] as List?) ?? [];
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -449,6 +513,9 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
+            if (paymentTypes.isNotEmpty)
+              _paymentTypesTable(paymentTypes),
+            if (paymentTypes.isNotEmpty) const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 controller: scrollController,
@@ -468,6 +535,10 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                             if (o['delivery_address'] != null)
                               Text(o['delivery_address'].toString(),
                                   maxLines: 2, overflow: TextOverflow.ellipsis),
+                            if (o['payment_type_name'] != null)
+                              Text('Оплата: ${o['payment_type_name']}',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey)),
                           ]),
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -480,6 +551,9 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
                             Text('Σ ${_formatNum(_toNum(o['total_sum']))}',
                                 style: const TextStyle(
                                     fontSize: 11, color: Colors.grey)),
+                          Text('Fee ${_formatNum(_toNum(o['delivery_service_fee']))}',
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey)),
                         ],
                       ),
                     ),
@@ -489,6 +563,33 @@ class _CourierReportsScreenState extends State<CourierReportsScreen> {
             ),
           ]),
         ),
+      ),
+    );
+  }
+
+  Widget _paymentTypesTable(List paymentTypes) {
+    final rows = paymentTypes
+        .map((pt) => pt is Map ? Map<String, dynamic>.from(pt) : <String, dynamic>{})
+        .toList();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Тип оплаты')),
+          DataColumn(label: Text('Σ заказов')),
+          DataColumn(label: Text('Σ delivery')),
+          DataColumn(label: Text('Σ fee')),
+          DataColumn(label: Text('Σ без delivery')),
+        ],
+        rows: rows.map((p) {
+          return DataRow(cells: [
+            DataCell(Text(p['name']?.toString() ?? 'Не указан')),
+            DataCell(Text(_formatNum(_toNum(p['totalOrderSum'])))),
+            DataCell(Text(_formatNum(_toNum(p['deliveryRevenue'])))),
+            DataCell(Text(_formatNum(_toNum(p['deliveryServiceFee'])))),
+            DataCell(Text(_formatNum(_toNum(p['orderSumWithoutDelivery'])))),
+          ]);
+        }).toList(),
       ),
     );
   }
