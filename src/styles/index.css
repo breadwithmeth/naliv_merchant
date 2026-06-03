@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #172033;
+  background: #f8fafc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  font-family: inherit;
+}
+
+.map-pin {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid white;
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28);
+}
+
+.map-pin-courier {
+  background: #f97316;
+}
+
+.map-pin-business {
+  background: #2563eb;
+}
+
+.map-pin-delivery {
+  background: #16a34a;
+}
+
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop,
+#html5-qrcode-button-file-selection {
+  min-height: 40px;
+  border-radius: 8px;
+  background: #ea580c;
+  padding: 8px 12px;
+  color: white;
+  font-weight: 700;
+}
